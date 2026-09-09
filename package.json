@@ -1,0 +1,50 @@
+{
+  "name": "dsh-why",
+  "version": "0.1.0",
+  "description": "dsh (DeepSeek Harness) failure diagnostics: why a plugin crashes the loader (missed the module table), engines.dsh mismatch, known official breaking points, and ecosystem-wide observed-compat cross-checks. Read-only, zero-dependency, works offline.",
+  "type": "module",
+  "bin": {
+    "dsh-why": "./bin/dsh-why.mjs"
+  },
+  "exports": {
+    "./scanner": "./lib/scanner.mjs",
+    "./rules": "./lib/rules.mjs",
+    "./collect": "./lib/collect.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "diagnostics",
+    "troubleshooting",
+    "failed-to-load-plugins",
+    "missed-the-module-table",
+    "client-modules",
+    "诊断",
+    "插件加载失败"
+  ],
+  "author": "ice5kysl",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ice5kysl/dsh-why.git"
+  },
+  "homepage": "https://github.com/ice5kysl/dsh-why#readme",
+  "bugs": {
+    "url": "https://github.com/ice5kysl/dsh-why/issues"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}

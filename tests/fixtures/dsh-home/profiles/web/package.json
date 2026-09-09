@@ -1,0 +1,20 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "fake-healthy-plugin": "^2.1.0",
+    "fake-guarded-plugin": "^0.3.0",
+    "fake-crash-plugin": "^1.0.0"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "fake-healthy-plugin",
+        "fake-guarded-plugin",
+        "fake-crash-plugin"
+      ]
+    }
+  }
+}
