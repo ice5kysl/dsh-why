@@ -10,6 +10,11 @@
 npx dsh-why            # 诊断当前环境
 npx dsh-why --json     # 机器可读（CI / 喂给 LLM）
 npx dsh-why --offline  # 完全不联网，仅用包内规则库
+
+# 手里攥着红屏报错？直接粘进来：
+pbpaste | npx dsh-why                    # 管道输入自动识别
+npx dsh-why --error "…missed the module table…"
+npx dsh-why --prompt   # 末尾附可粘给 AI agent 的修复 prompt
 ```
 
 Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修改你的任何文件**。输出语言按 locale 自动判断（中文/English），可用 `--lang zh|en` 覆盖。
@@ -19,6 +24,9 @@ Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修�
 - **环境摘要**——dsh 版本、shell（模块表）版本、DSH_HOME、profile、插件数。「未找到 dsh 安装」也是合法答案，不是报错。
 - **崩溃级结论（R1）**——插件 client bundle 里**无 try/catch 守卫**的 require 引用了当前 shell 模块表不提供的模块（守卫感知：被配对 `try/catch` 兜住的 require 不会崩——官方加载器是调用时解析的）。每个缺失模块都附**官方何时移除/何时加入/从未提供**——从已发布 shell 历史推导，不靠猜。
 - **版本范围警告（R2）**——插件声明的 `engines.dsh` 不覆盖你的 dsh。
+- **profile 完整性（R6）**——manifest 声明了但 `node_modules` 里没有的插件会让 dsh 启动即炸（典型的「卸载插件后 dsh 起不来」）；磁盘上的半卸载残留给警告。pnpm symlink 会跟随验证，绝不误判。
+- **报错粘贴模式（`--error` / 管道 stdin）**——直接解析加载器真实报错文本（`failed to import loader entry …`、`require("…") missed the module table`、`bundle script … failed to load`、`cannot resolve "…"`、裸 `Failed to load plugins` 退化为全量诊断），**即使本机没装该插件**也照常诊断。不认识的报错会诚实说明并列出已支持模式。
+- **AI 修复 prompt（`--prompt`）**——末尾附可直接粘给 AI agent 的 prompt：环境 + 结论 + 已知修法 + seed-safe 约束（只允许模块表内 require，否则 try/catch）。
 - **升级提示（R3）**——npm 上有新版；很多时候「先升级」就是全部修法。
 - **生态对照（R4/R5）**——该插件在 [dsh-insights.com](https://dsh-insights.com) 实测矩阵里的判定（`ok` / `never` / `broken-since` / `supported-since`），以及「你不是唯一踩坑的：全生态 N 个插件缺同一个模块」。
 - **可直接复制的 GitHub issue 模板**——环境信息和诊断结论已预填，发给插件作者即可。
@@ -78,7 +86,7 @@ dsh 的 web shell 不允许插件 client bundle 任意 `require()` npm 包——
 
 1. **采集**（只读）：全局 dsh 安装（全局 npm root 下的 `@deepseek-ai/dsh` 与 shell 构建 `@deepseek-ai/dsh-web-frontend`）、`DSH_HOME`（默认 `~/.dsh`）的 profile 清单（与 `dsh plugin add` 同一 seam）、每个启用插件的 client bundle。
 2. **扫描** bundle 的字面量 `require("…")` 集合——**守卫感知**扫描器（花括号配对识别 `try{…}catch{…}`，跳过字符串/模板/注释/正则字面量）。这正是 dsh-insights.com 实测矩阵的同款代码，本地结论与线上生态数据同口径。
-3. **规则库**：R1 模块表缺失（含逐模块历史）、R2 `engines.dsh` 覆盖、R3 npm 新版、R4/R5 对照实测矩阵（已观测 2300+ 插件）。
+3. **规则库**：R1 模块表缺失（含逐模块历史）、R2 `engines.dsh` 覆盖、R3 npm 新版、R4/R5 对照实测矩阵（已观测 2300+ 插件）、R6 profile 完整性——外加 [fixes.json 案例库](https://dsh-insights.com/data/fixes.json)的已知修法。
 4. **优雅降级**：`--offline`（或网络不可达）回退到包内 shell 历史快照 + 本地规则库。诊断工具自己永远不能崩。
 
 **隐私**：在线模式只发三类 GET 请求——dsh-insights.com 数据文件、npm registry 的 `latest` 元数据（仅限你已装的插件名）。你的机器信息永不上传，磁盘永不写入。
@@ -95,6 +103,8 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--json` | 机器可读报告（findings 带结构化字段；含 `issueTemplate`） |
 | `--offline` | 零网络——包内 shell 历史快照 + 本地规则 |
 | `--profile <name>` | 诊断指定 profile（默认 `web`，或唯一的那个） |
+| `--error [文本]` | 解析粘贴的报错文本（缺省读 stdin；管道输入自动识别），替代全量扫描 |
+| `--prompt` | 末尾附可粘给 AI agent 的修复 prompt |
 | `--dsh-home <path>` | 覆盖 `DSH_HOME`（也认环境变量 `DSH_HOME`） |
 | `--lang zh\|en` | 输出语言（默认按 `LC_ALL`/`LANG`） |
 | `--no-color` | 关闭颜色（认 `NO_COLOR` 环境变量） |

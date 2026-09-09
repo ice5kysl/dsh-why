@@ -50,7 +50,10 @@ describe('diagnose · broken fixture profile (web)', () => {
 
   it('environment summary fields', () => {
     assert.equal(report.install.dshVersion, '0.1.2-rc.1')
-    assert.deepEqual(report.seed, { version: '0.1.2-rc.1', source: 'exact', origin: 'bundled' })
+    assert.equal(report.seed.version, '0.1.2-rc.1')
+    assert.equal(report.seed.source, 'exact')
+    assert.equal(report.seed.origin, 'bundled')
+    assert.ok(Array.isArray(report.seed.words) && report.seed.words.includes('react')) // --prompt's seed-safe constraint
     assert.equal(report.mode, 'offline')
   })
 

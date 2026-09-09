@@ -10,6 +10,11 @@
 npx dsh-why            # diagnose the current environment
 npx dsh-why --json     # machine-readable (CI / paste to an LLM)
 npx dsh-why --offline  # zero network, bundled rule base only
+
+# holding a red-screen error? paste it straight in:
+pbpaste | npx dsh-why                    # piped stdin is auto-detected
+npx dsh-why --error "…missed the module table…"
+npx dsh-why --prompt   # append a paste-ready fix prompt for your AI agent
 ```
 
 Node ≥ 18, no install required (`npx`), **zero npm dependencies**, and it **never modifies any file** on your machine. Output language follows your locale (中文/English), override with `--lang zh|en`.
@@ -19,6 +24,9 @@ Node ≥ 18, no install required (`npx`), **zero npm dependencies**, and it **ne
 - **Environment summary** — dsh version, shell (module-table) version, DSH_HOME, profile, plugin count. "No dsh installation found" is a valid answer, not an error.
 - **Crash-level findings (R1)** — a plugin whose client bundle requires a module the current shell's module table doesn't provide, *unguarded* (the try/catch-aware check: requires covered by a paired `try/catch` don't crash — the loader resolves `require()` at call time). For each missing module: **when official dsh removed it, or added it, or never shipped it** — derived from the published shell history, not guesswork.
 - **Version-range warnings (R2)** — the plugin's `engines.dsh` doesn't cover your dsh.
+- **Profile integrity (R6)** — a plugin declared in the manifest but missing from `node_modules` crashes dsh at boot (the classic "uninstalled a plugin and now it won't start"); half-uninstalled leftovers on disk get a warning. pnpm symlinks are followed, never misflagged.
+- **Pasted-error mode (`--error` / piped stdin)** — parses the loader's actual error text (`failed to import loader entry …`, `require("…") missed the module table`, `bundle script … failed to load`, `cannot resolve "…"`, bare `Failed to load plugins` → full diagnosis) and diagnoses the referenced plugin/module even when it is NOT installed locally. Unknown patterns get an honest "not recognized" plus the supported list.
+- **AI fix prompt (`--prompt`)** — appends a paste-ready prompt for your coding agent: environment + findings + known fixes + the seed-safe constraint (only module-table requires, or try/catch).
 - **Upgrade hints (R3)** — a newer release exists on npm; upgrading first is often the whole fix.
 - **Ecosystem cross-check (R4/R5)** — the plugin's measured verdict on [dsh-insights.com](https://dsh-insights.com) (`ok` / `never` / `broken-since` / `supported-since`), plus *"you are not alone: N plugins ecosystem-wide miss the same module."*
 - **A copy-ready GitHub issue template** for the plugin author, with your environment and the diagnosis pre-filled.
@@ -78,7 +86,7 @@ Almost always a `0.1.0-rc.8`-style removal: your plugin was written against a mo
 
 1. **Collects** (read-only): your global dsh install (`@deepseek-ai/dsh` + the `@deepseek-ai/dsh-web-frontend` shell build under the global npm root), your `DSH_HOME` (default `~/.dsh`) profile manifest — the same seam `dsh plugin add` operates on — and each enabled plugin's client bundle.
 2. **Scans** each bundle's literal `require("…")` set with a **guard-aware** scanner (brace-matched `try{…}catch{…}` pairing that skips strings/templates/comments/regex literals) — the exact code that powers the dsh-insights.com observed-compat matrix, so your local diagnosis agrees with the published ecosystem data.
-3. **Checks the rule base**: R1 module-table misses with per-module history, R2 `engines.dsh` coverage, R3 npm upgrades, R4/R5 ecosystem cross-check against the live matrix (2,300+ plugins observed).
+3. **Checks the rule base**: R1 module-table misses with per-module history, R2 `engines.dsh` coverage, R3 npm upgrades, R4/R5 ecosystem cross-check against the live matrix (2,300+ plugins observed), R6 profile integrity — plus known fixes from the [fixes.json case base](https://dsh-insights.com/data/fixes.json).
 4. **Degrades gracefully**: `--offline` (or an unreachable network) falls back to the bundled shell-history snapshot and the local rule base. A diagnostic tool must never itself crash.
 
 **Privacy**: online mode makes exactly three kinds of GET requests — `dsh-insights.com` data files and npm registry `latest` metadata for your installed plugin names. Nothing about your machine is ever uploaded; nothing is written to disk.
@@ -95,6 +103,8 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--json` | machine-readable report (findings carry structured fields; includes `issueTemplate`) |
 | `--offline` | zero network — bundled shell-history snapshot + local rules |
 | `--profile <name>` | which profile to diagnose (default: `web`, or the only one present) |
+| `--error [text]` | parse a pasted error text instead of scanning the profile (reads stdin when the value is omitted; piped stdin is auto-detected) |
+| `--prompt` | append a paste-ready fix prompt for an AI coding agent |
 | `--dsh-home <path>` | override `DSH_HOME` (env `DSH_HOME` is honored too) |
 | `--lang zh\|en` | output language (default: from `LC_ALL`/`LANG`) |
 | `--no-color` | disable ANSI colors (`NO_COLOR` env respected) |

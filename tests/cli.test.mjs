@@ -5,6 +5,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -29,6 +30,23 @@ function runCli(args, env = {}) {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
+function runCliWithStdin(args, input, env = {}) {
+  const result = spawnSync(process.execPath, [BIN, ...args], {
+    env: {
+      ...process.env,
+      LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
+      DSH_HOME: join(FIXTURES, 'dsh-home'),
+      DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global'),
+      NO_COLOR: '1',
+      ...env,
+    },
+    input,
+    encoding: 'utf8',
+    timeout: 30_000,
+  })
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr }
+}
+
 describe('dsh-why CLI', () => {
   it('--help prints usage and exits 0', () => {
     const { status, stdout } = runCli(['--help'])
@@ -38,9 +56,10 @@ describe('dsh-why CLI', () => {
   })
 
   it('--version prints the package version', () => {
+    const expected = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
     const { status, stdout } = runCli(['--version'])
     assert.equal(status, 0)
-    assert.match(stdout.trim(), /^0\.1\.0$/)
+    assert.equal(stdout.trim(), expected)
   })
 
   it('unknown option → usage error exit 2', () => {
@@ -93,5 +112,59 @@ describe('dsh-why CLI', () => {
     assert.equal(status, 0)
     assert.match(stdout, /profile "nope" not found/)
     assert.match(stdout, /clean/)
+  })
+
+  it('R6: integrity fixture profile reports the missing plugin as crash-level', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'integrity'])
+    assert.equal(status, 1)
+    assert.match(stdout, /\[ERROR·R6\] fake-missing-plugin/)
+    assert.match(stdout, /\[WARN·R6\] fake-leftover-plugin/)
+    assert.match(stdout, /\[WARN·R6\] fake-disabled-gone/)
+    assert.doesNotMatch(stdout, /R6\] fake-healthy-plugin/) // the pnpm symlink must not be flagged
+  })
+
+  it('--error with inline text diagnoses the pasted references', () => {
+    const { status, stdout } = runCli([
+      '--offline',
+      '--error',
+      'HARNESS Failed to load plugins: failed to import loader entry f059e6c1 (dsh-workspace-kit): client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table',
+    ])
+    assert.equal(status, 1)
+    assert.match(stdout, /Parsed error/)
+    assert.match(stdout, /plugin reference\(s\): dsh-workspace-kit/)
+    assert.match(stdout, /\[ERROR·R1\] dsh-workspace-kit/)
+  })
+
+  it('piped stdin is auto-detected (no --error flag needed)', () => {
+    const { status, stdout } = runCliWithStdin(
+      ['--offline'],
+      'client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table\n',
+    )
+    assert.equal(status, 1)
+    assert.match(stdout, /module reference\(s\): @deepseek-ai\/dsh-client-runtime\/client/)
+  })
+
+  it('unrecognized pasted error exits 0 with the honest unknown answer', () => {
+    const { status, stdout } = runCliWithStdin(['--offline'], 'some totally unknown failure\n')
+    assert.equal(status, 0)
+    assert.match(stdout, /I don’t recognize this error pattern/)
+  })
+
+  it('--prompt appends the agent-ready fix prompt; JSON carries fixPrompt', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'web', '--prompt'])
+    assert.equal(status, 1)
+    assert.match(stdout, /AI fix prompt/)
+    assert.match(stdout, /seed-safe/)
+    const json = runCli(['--offline', '--profile', 'web', '--json'])
+    const report = JSON.parse(json.stdout)
+    assert.match(report.fixPrompt, /Fix a dsh \(DeepSeek Harness\) plugin load failure/)
+    assert.match(report.fixPrompt, /@deepseek-ai\/dsh-client-runtime\/client/)
+    assert.equal(report.fixPrompt.includes('react'), true) // seed words listed in the constraint
+  })
+
+  it('--prompt on a healthy profile says nothing to fix', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'clean', '--prompt'])
+    assert.equal(status, 0)
+    assert.match(stdout, /Nothing to fix/)
   })
 })
