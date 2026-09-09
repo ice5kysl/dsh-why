@@ -11,6 +11,7 @@ import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { readProfile } from '../lib/collect.mjs'
+import { buildIssueTemplate, renderText } from '../lib/report.mjs'
 import { countEcosystemMissing, diagnose, moduleHistory, resolveSeedVersion } from '../lib/rules.mjs'
 import { compareVersions } from '../lib/scanner.mjs'
 
@@ -187,6 +188,59 @@ describe('R3/R4/R5 with injected online data', () => {
     assert.equal(r5[0].plugin, 'fake-guarded-plugin')
     assert.equal(r5[0].severity, 'note')
     assert.equal(report.summary.errors, 1) // R5 must not inflate problem counts
+  })
+})
+
+describe('fixes.json case base (event-level repair guidance)', () => {
+  const FIXES = {
+    generatedAt: '2026-09-10T00:00:00.000Z',
+    modules: {
+      '@deepseek-ai/dsh-client-runtime/client': {
+        status: 'never-seeded',
+        fix: '迁移到 @deepseek-ai/dsh-client-store（0.1.2-alpha.2 起在模块表）',
+        cases: [
+          { repo: 'Fisfzy/dsh-ego-browser', url: 'https://github.com/Fisfzy/dsh-ego-browser/issues/32', note: 'main/v0.8.1 已迁移，只差 publish' },
+          { repo: 'RevolutionLA/dsh-dream-skin', url: 'https://github.com/RevolutionLA/dsh-dream-skin/issues/47', note: 'store-first + try/catch 兜底' },
+        ],
+      },
+    },
+  }
+
+  it('hit: the R1 finding carries the known fix and its cases', () => {
+    const report = runFixture('web', { fixes: FIXES })
+    const [r1] = report.findings.filter((f) => f.rule === 'R1' && f.severity === 'error')
+    const kf = r1.knownFixes?.['@deepseek-ai/dsh-client-runtime/client']
+    assert.ok(kf)
+    assert.match(kf.fix, /dsh-client-store/)
+    assert.equal(kf.cases.length, 2)
+    assert.equal(kf.cases[0].repo, 'Fisfzy/dsh-ego-browser')
+  })
+
+  it('miss: fixes without the missing module → no knownFixes block at all', () => {
+    const report = runFixture('web', { fixes: { modules: { 'some-other-module': { fix: 'x', cases: [] } } } })
+    const [r1] = report.findings.filter((f) => f.rule === 'R1' && f.severity === 'error')
+    assert.equal(r1.knownFixes, undefined)
+  })
+
+  it('absent (offline / older site): no knownFixes, diagnosis unaffected', () => {
+    const report = runFixture('web')
+    const [r1] = report.findings.filter((f) => f.rule === 'R1' && f.severity === 'error')
+    assert.equal(r1.knownFixes, undefined)
+    assert.equal(report.summary.errors, 1)
+  })
+
+  it('text render shows the fix text and case links (zh + en)', () => {
+    const report = runFixture('web', { fixes: FIXES })
+    const zh = renderText(report, 'zh', '0.1.1', { color: false })
+    assert.match(zh, /已知修法（来自生态案例库）/)
+    assert.match(zh, /迁移到 @deepseek-ai\/dsh-client-store/)
+    assert.match(zh, /Fisfzy\/dsh-ego-browser/)
+    assert.match(zh, /https:\/\/github\.com\/RevolutionLA\/dsh-dream-skin\/issues\/47/)
+    const en = renderText(report, 'en', '0.1.1', { color: false })
+    assert.match(en, /Known fix \(from the ecosystem case base\)/)
+    assert.match(en, /case: Fisfzy\/dsh-ego-browser/)
+    // the issue template picks up the fix line too
+    assert.match(buildIssueTemplate(report, 'zh', '0.1.1'), /已知修法：迁移到 @deepseek-ai\/dsh-client-store/)
   })
 })
 
