@@ -91,7 +91,7 @@ CLI 是产品，插件壳是渠道 · 只读是信任的根基 · 诊断工具�
 
 ## 开放问题
 
-- O1 `--package <dir>` 插件作者自检模式（README 已预告 "welcome PR"）：优先级与形态（本地目录扫描 vs CI action）。
+- O1 `--package <dir>` 插件作者自检模式 —— ✅ 已实现（v0.1.7，本地目录扫描，可作 CI 门禁）。
 - O2 报错模式的收录管道：新报错如何从 issue / 案例库回流到 errparse 的已知模式（第一步先做「未识别报错 → 预填 issue 链接」的低成本出口）。
 - O3 与 dsh-insights 的数据联动节奏：`shell-seeds.json` / `fixes.json` 快照的同步策略与滞后容忍度。
 - O4 cordis 插件薄壳的时机（v0.2.x，注册 `dsh why` 命令）——渠道价值 vs 维护成本。

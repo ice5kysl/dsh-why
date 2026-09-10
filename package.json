@@ -1,6 +1,6 @@
 {
   "name": "dsh-why",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "dsh (DeepSeek Harness) failure diagnostics: why a plugin crashes the loader (missed the module table), engines.dsh mismatch, known official breaking points, and ecosystem-wide observed-compat cross-checks. Read-only, zero-dependency, works offline.",
   "type": "module",
   "bin": {

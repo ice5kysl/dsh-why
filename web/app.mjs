@@ -102,7 +102,7 @@ function mountResult(result) {
 
   if (result.kind === 'report') {
     LAST_REPORT = result.report
-    const handle = mountReport(out, result.report, lang, '0.1.6')
+    const handle = mountReport(out, result.report, lang, '0.1.7')
     out.querySelector('#copy-report')?.addEventListener('click', async () => {
       await copyText(handle.plainText())
       flashButton(out.querySelector('#copy-report'), w.copying)
@@ -170,7 +170,7 @@ async function run() {
       rows, rowsExact: true,
       fixes: data.fixes, fixesOrigin: data.fixesOrigin,
       observed: data.observed,
-      toolVersion: '0.1.6',
+      toolVersion: '0.1.7',
     })
     mountResult(result)
   } catch (error) {
