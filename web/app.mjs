@@ -1,14 +1,13 @@
 /**
- * dsh-why web — page wiring. Loads the data, listens to the paste box and the
- * version selector, and renders the diagnosis produced by ./diagnose.mjs.
- *
- * Browser-only; everything the pasted text touches stays on this page. The only
- * network calls fetch public, static data from dsh-insights.com (CORS-open).
+ * dsh-why web — page wiring. Loads the data, listens to the paste box, and
+ * renders the structured diagnosis (web/render.mjs) from the same report object
+ * the CLI's --json emits. Browser-only; the pasted text never leaves the page.
  *
  * @module dsh-why/web/app
  */
 
 import { diagnosePastedError } from './diagnose.mjs'
+import { mountReport } from './render.mjs'
 import { webT } from './strings.mjs'
 import { fetchJson, loadCompatObserved, loadFixes, loadShellSeeds, URLS } from '../lib/net.mjs'
 import { compareVersions } from '../lib/scanner.mjs'
@@ -24,22 +23,33 @@ function detectLang() {
 }
 
 let lang = detectLang()
-const T = () => webT(lang)
 
 function applyLang() {
   document.documentElement.dataset.lang = lang
   try { localStorage.setItem('dsh-why.lang', lang) } catch { /* ignore */ }
-  document.title = T().title
   $('lang-en').classList.toggle('on', lang === 'en')
   $('lang-zh').classList.toggle('on', lang === 'zh')
+  document.title = lang === 'zh' ? 'dsh-why — 你的 dsh 为什么挂了？' : 'dsh-why — why did your dsh break?'
   document.querySelectorAll('[data-en]').forEach((el) => { el.textContent = lang === 'en' ? el.dataset.en : el.dataset.zh })
   document.querySelectorAll('[data-en-ph]').forEach((el) => { el.placeholder = lang === 'en' ? el.dataset.enPh : el.dataset.zhPh })
-  document.querySelectorAll('[data-en-note]').forEach((el) => { el.textContent = lang === 'en' ? el.dataset.enNote : el.dataset.zhNote })
+  // re-render an already-shown report in the new language
+  if (LAST_REPORT) mountResult({ kind: 'report', report: LAST_REPORT })
 }
 
-// ── data (fetched once, cached across diagnoses) ────────────────────────────
-let DATA = null
+// ── theme (auto → light → dark) ─────────────────────────────────────────────
+const THEME_LABEL = { auto: '◐', light: '☀', dark: '☾' }
+function currentTheme() {
+  try { return localStorage.getItem('dsh-why.theme') || 'auto' } catch { return 'auto' }
+}
+function applyTheme() {
+  const t = currentTheme()
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme')
+  else document.documentElement.setAttribute('data-theme', t)
+  $('theme').textContent = THEME_LABEL[t]
+}
 
+// ── data ────────────────────────────────────────────────────────────────────
+let DATA = null
 async function loadData() {
   if (DATA) return DATA
   const [bundledSeeds, bundledFixes] = await Promise.all([
@@ -56,16 +66,15 @@ async function loadData() {
   return DATA
 }
 
-// ── version selector ────────────────────────────────────────────────────────
 function fillVersions(seeds) {
   const versions = Object.keys(seeds?.versions ?? {}).sort(compareVersions)
   const distTags = seeds?.distTags ?? {}
   const sel = $('version')
   sel.innerHTML = ''
-  const opt = document.createElement('option')
-  opt.value = ''
-  opt.textContent = T().versionUnknown
-  sel.appendChild(opt)
+  const none = document.createElement('option')
+  none.value = ''
+  none.textContent = webT(lang).versionUnknown
+  sel.appendChild(none)
   for (const v of versions.slice().reverse()) {
     const o = document.createElement('option')
     o.value = v
@@ -78,134 +87,161 @@ function fillVersions(seeds) {
   if (wanted) sel.value = wanted
 }
 
-function selectedVersion() {
-  return $('version').value || null
-}
-
 // ── rendering ───────────────────────────────────────────────────────────────
-const SEV_ICON = { error: '✗', warning: '⚠', info: 'ℹ', note: '·' }
+let LAST_REPORT = null
 
-/** A plain, copyable rendering of the report (the CLI's ANSI off, plus our web banner). */
-function renderReport(result) {
-  const T = webT(lang)
+function mountResult(result) {
   const out = $('out')
   out.textContent = ''
-  const banner = document.createElement('div')
-  banner.className = 'provenance'
-  banner.textContent = T.provenance
-  out.appendChild(banner)
-  const pre = document.createElement('pre')
-  pre.className = 'report'
-  pre.textContent = result.text
-  out.appendChild(pre)
-}
+  const w = webT(lang)
 
-function renderState(kind, detail = '') {
-  const T = webT(lang)
-  const out = $('out')
-  out.textContent = ''
-  const wrap = (cls, text) => {
-    const el = document.createElement('div')
-    el.className = cls
-    el.textContent = text
-    out.appendChild(el)
-  }
-  if (kind === 'empty') wrap('muted', T.empty)
-  else if (kind === 'bare') {
-    wrap('warn', T.bare)
-    const code = document.createElement('code')
-    code.textContent = T.bareCmd
-    out.appendChild(code)
-  } else if (kind === 'unrecognized') {
-    wrap('warn', `${T.unrecognizedTitle} — ${T.unrecognized}`)
-    if (detail) {
+  const prov = document.createElement('div')
+  prov.className = 'provenance'
+  prov.textContent = w.provenance
+  out.appendChild(prov)
+
+  if (result.kind === 'report') {
+    LAST_REPORT = result.report
+    const handle = mountReport(out, result.report, lang, '0.1.6')
+    out.querySelector('#copy-report')?.addEventListener('click', async () => {
+      await copyText(handle.plainText())
+      flashButton(out.querySelector('#copy-report'), w.copying)
+    })
+    out.querySelector('#copy-issue')?.addEventListener('click', async () => {
+      await copyText(handle.issueText())
+      flashButton(out.querySelector('#copy-issue'), w.issueCopied)
+    })
+  } else {
+    LAST_REPORT = null
+    if (result.kind === 'empty') out.appendChild(el('p', 'empty', w.empty))
+    else if (result.kind === 'bare') {
+      out.appendChild(el('p', 'warn-note', w.bare))
+      out.appendChild(el('span', 'bare-cmd', w.bareCmd))
+    } else if (result.kind === 'unrecognized') {
+      out.appendChild(el('p', 'warn-note', `${w.unrecognizedTitle} — ${w.unrecognized}`))
       const pre = document.createElement('pre')
       pre.className = 'report'
-      pre.textContent = detail
+      pre.textContent = result.text
       out.appendChild(pre)
     }
   }
 }
 
-// ── the diagnosis ───────────────────────────────────────────────────────────
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e }
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text) } catch { /* clipboard unavailable */ }
+}
+
+function flashButton(btn, label) {
+  if (!btn) return
+  const original = btn.textContent
+  btn.textContent = label
+  setTimeout(() => { btn.textContent = original }, 1200)
+}
+
+function mountSkeleton() {
+  const out = $('out')
+  out.textContent = ''
+  const sk = el('div', 'skeleton')
+  sk.appendChild(el('div', 'sk-bar w40'))
+  sk.appendChild(el('div', 'sk-bar w90'))
+  sk.appendChild(el('div', 'sk-bar w70'))
+  sk.appendChild(el('div', 'sk-bar w85'))
+  out.appendChild(sk)
+}
+
+// ── diagnosis ───────────────────────────────────────────────────────────────
 async function run() {
   const text = $('input').value
-  const T = webT(lang)
-  if (!text.trim()) { renderState('empty'); return }
+  if (!text.trim()) { LAST_REPORT = null; mountResult({ kind: 'empty' }); return }
   const status = $('status')
-  status.textContent = T.loading
   status.hidden = false
+  status.textContent = webT(lang).loading
+  mountSkeleton()
   try {
     const data = await loadData()
-    const version = selectedVersion()
+    const version = $('version').value || null
     const rows = version && data.rowsDoc?.versions?.[version] ? data.rowsDoc.versions[version] : null
     const result = diagnosePastedError({
-      text,
-      lang,
-      shellVersion: version || null,
-      seeds: data.seeds,
-      seedsOrigin: data.seedsOrigin,
-      rows,
-      rowsExact: true, // the published roster is reconciled against __DSH_BOOT__ (a superset)
-      fixes: data.fixes,
-      fixesOrigin: data.fixesOrigin,
+      text, lang, shellVersion: version || null,
+      seeds: data.seeds, seedsOrigin: data.seedsOrigin,
+      rows, rowsExact: true,
+      fixes: data.fixes, fixesOrigin: data.fixesOrigin,
       observed: data.observed,
       toolVersion: '0.1.6',
     })
-    if (result.kind === 'report') renderReport(result)
-    else renderState(result.kind, result.text)
+    mountResult(result)
   } catch (error) {
-    renderState('empty')
-    const el = document.createElement('div')
-    el.className = 'error'
-    el.textContent = `dsh-why: internal error — ${error?.message ?? error}`
-    $('out').appendChild(el)
+    LAST_REPORT = null
+    $('out').textContent = ''
+    $('out').appendChild(el('div', 'warn-note', `${webT(lang).internalError}: ${error?.message ?? error}`))
   } finally {
     status.hidden = true
   }
 }
 
-// ── copy / paste helpers ────────────────────────────────────────────────────
-async function copyReport() {
-  const pre = $('out').querySelector('pre.report')
-  if (!pre) return
-  try {
-    await navigator.clipboard.writeText(pre.textContent)
-    const btn = $('copy')
-    const T = webT(lang)
-    btn.textContent = T.copying
-    setTimeout(() => { btn.textContent = T.copy }, 1200)
-  } catch { /* clipboard unavailable */ }
-}
-
-async function pasteFromClipboard() {
-  try {
-    const text = await navigator.clipboard.readText()
-    if (text) { $('input').value = text; run() }
-  } catch { /* permission denied */ }
+// ── shareable link ──────────────────────────────────────────────────────────
+function shareUrl() {
+  const u = new URL(location.href)
+  const text = $('input').value.trim()
+  const version = $('version').value
+  if (text) u.searchParams.set('e', text)
+  if (version) u.searchParams.set('v', version)
+  u.searchParams.set('lang', lang)
+  return u.href
 }
 
 // ── boot ────────────────────────────────────────────────────────────────────
+let debounce = null
+
 function boot() {
   applyLang()
+  applyTheme()
   $('lang-en').addEventListener('click', () => { lang = 'en'; applyLang() })
   $('lang-zh').addEventListener('click', () => { lang = 'zh'; applyLang() })
+  $('theme').addEventListener('click', () => {
+    const next = { auto: 'light', light: 'dark', dark: 'auto' }[currentTheme()]
+    try { localStorage.setItem('dsh-why.theme', next) } catch { /* ignore */ }
+    applyTheme()
+  })
+
   $('run').addEventListener('click', run)
-  $('copy').addEventListener('click', copyReport)
-  $('paste').addEventListener('click', pasteFromClipboard)
-  $('input').addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') run() })
+  $('paste').addEventListener('click', async () => {
+    try { const t = await navigator.clipboard.readText(); if (t) { $('input').value = t; run() } } catch { /* denied */ }
+  })
+  $('copy-cmd').addEventListener('click', async () => {
+    await copyText('npx dsh-why')
+    flashButton($('copy-cmd'), webT(lang).copying)
+  })
+  $('copylink').addEventListener('click', async () => {
+    await copyText(shareUrl())
+    flashButton($('copylink'), webT(lang).copylinkDone)
+  })
+  $('version').addEventListener('change', () => { if ($('input').value.trim()) run() })
+
+  // paste → auto-diagnose (debounced), ⌘/Ctrl+Enter forces it
+  $('input').addEventListener('input', () => {
+    clearTimeout(debounce)
+    debounce = setTimeout(run, 500)
+  })
+  $('input').addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); run() }
+  })
 
   // shareable prefill: ?e=<text>&v=<version>&lang=<lang>
-  const fromUrl = new URLSearchParams(location.search).get('e')
-  if (fromUrl) {
-    try { $('input').value = decodeURIComponent(fromUrl) } catch { $('input').value = fromUrl }
+  const q = new URLSearchParams(location.search)
+  if (q.get('e')) {
+    try { $('input').value = decodeURIComponent(q.get('e')) } catch { $('input').value = q.get('e') }
   }
 
-  // the version list needs the data; render it as soon as it arrives, then run
-  // if there is already text to diagnose.
   loadData()
-    .then((data) => { fillVersions(data.seeds); if ($('input').value.trim()) run() })
-    .catch(() => { if ($('input').value.trim()) run() }) // data fetch failed — the report degrades on its own
+    .then((data) => {
+      fillVersions(data.seeds)
+      if ($('input').value.trim()) run()
+      else mountResult({ kind: 'empty' })
+    })
+    .catch(() => { if ($('input').value.trim()) run() })
 }
 
 boot()

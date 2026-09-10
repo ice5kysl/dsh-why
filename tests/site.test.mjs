@@ -17,7 +17,9 @@ import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { diagnosePastedError } from '../web/diagnose.mjs'
-import { renderText } from '../lib/report.mjs'
+import { moduleTimeline } from '../web/render.mjs'
+import { findingFixSteps, findingTitle, renderText } from '../lib/report.mjs'
+import { t } from '../lib/i18n.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -133,5 +135,31 @@ describe('renderText web options', () => {
     const out = renderText(report, 'en', '9.9.9', { color: false, hint: false })
     assert.doesNotMatch(out, /Tip: --json/)
     assert.doesNotMatch(out, /Docs: https:\/\/dsh-why\.com/)
+  })
+})
+
+
+describe('shared title / fix steps / timeline (web ↔ CLI, one source of truth)', () => {
+  const s = t('en')
+
+  it('findingTitle mirrors the CLI for every finding shape', () => {
+    assert.equal(findingTitle({ rule: 'R1', severity: 'error', plugin: 'dsh-at-file', fromError: true, missing: ['x'], resolvableNow: false }, s), 'dsh-at-file crashes the loader on this dsh')
+    assert.equal(findingTitle({ rule: 'R1', severity: 'warning', fromError: true, missing: ['x'], resolvableNow: 'unknown' }, s), 'the module in the pasted error could not be classified on this shell')
+    assert.equal(findingTitle({ rule: 'R1', severity: 'warning', fromError: true, missing: ['x'], resolvableNow: 'conditional' }, s), 'the module in the pasted error is a built-in graph row of this shell')
+    assert.equal(findingTitle({ rule: 'R1', severity: 'warning', plugin: 'p', reason: 'undeclared-lazy-row', conditional: ['@x/y'] }, s), 'p: resolves only conditionally on this dsh')
+    assert.equal(findingTitle({ rule: 'R2', plugin: 'p' }, s), 'p: declared dsh range does not cover your dsh')
+  })
+
+  it('findingFixSteps is empty for non-actionable states', () => {
+    assert.deepEqual(findingFixSteps({ rule: 'R1', resolvableNow: true }, s), [])
+    assert.deepEqual(findingFixSteps({ rule: 'R1', resolvableNow: 'conditional' }, s), [])
+    assert.equal(findingFixSteps({ rule: 'R1', resolvableNow: 'unknown' }, s).length, 1)
+  })
+
+  it('moduleTimeline reduces history to a displayable shape', () => {
+    assert.deepEqual(moduleTimeline({ kind: 'never' }), { kind: 'never' })
+    assert.deepEqual(moduleTimeline({ kind: 'shipped', since: '0.0.1-rc.5' }), { kind: 'present', since: '0.0.1-rc.5' })
+    assert.deepEqual(moduleTimeline({ kind: 'shipped', since: '0.0.1-rc.5', last: '0.1.0-rc.7', removedIn: '0.1.0-rc.8' }), { kind: 'removed', since: '0.0.1-rc.5', last: '0.1.0-rc.7', removedIn: '0.1.0-rc.8' })
+    assert.deepEqual(moduleTimeline(undefined), { kind: 'unknown' })
   })
 })
