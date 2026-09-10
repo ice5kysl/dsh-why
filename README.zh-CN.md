@@ -20,6 +20,8 @@ npx dsh-why --prompt   # 末尾附可粘给 AI agent 的修复 prompt
 
 Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修改你的任何文件**。输出语言按 locale 自动判断（中文/English），可用 `--lang zh|en` 覆盖。
 
+另有**网页版** [dsh-why.com](https://dsh-why.com)：在浏览器里粘贴红屏报错，无需安装即可得到同一套诊断——同一规则库在浏览器端运行，你粘贴的内容绝不上传。
+
 ## 它能告诉你什么
 
 - **环境摘要**——dsh 版本、shell（模块表）版本、DSH_HOME、profile、插件数，以及本次判定所依赖的**图行模型**。「未找到 dsh 安装」也是合法答案，不是报错。

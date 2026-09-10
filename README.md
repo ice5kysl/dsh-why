@@ -20,6 +20,8 @@ npx dsh-why --prompt   # append a paste-ready fix prompt for your AI agent
 
 Node ≥ 18, no install required (`npx`), **zero npm dependencies**, and it **never modifies any file** on your machine. Output language follows your locale (中文/English), override with `--lang zh|en`.
 
+There is also a **web version** at [dsh-why.com](https://dsh-why.com): paste the red-screen error into a browser and get the same diagnosis with nothing installed — it runs the same rule base client-side and never uploads what you paste.
+
 ## What it tells you
 
 - **Environment summary** — dsh version, shell (module-table) version, DSH_HOME, profile, plugin count, and which **row model** the verdicts rest on. "No dsh installation found" is a valid answer, not an error.

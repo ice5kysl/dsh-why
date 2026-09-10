@@ -10,7 +10,7 @@
  * Exit code 0 = no crash-level findings, 1 = crash-level findings, 2 = usage error.
  */
 
-import { readFileSync } from 'node:fs'
+import { fstatSync, readFileSync } from 'node:fs'
 
 import { detectLang, t } from '../lib/i18n.mjs'
 import { runDiagnosis } from '../lib/diagnose.mjs'
@@ -86,19 +86,50 @@ function parseArgs(argv) {
   return { opts }
 }
 
-/** Read piped stdin (non-TTY) with a bounded wait; null for TTY / empty / timeout. */
-async function readStdin(timeoutMs = 3000) {
-  if (process.stdin.isTTY) return null
+/**
+ * What kind of stdin do we have? A character device is /dev/null — the usual
+ * non-interactive stdin in CI and in process runners — and it will NEVER deliver
+ * data; waiting on it just costs every run the full timeout. Pipes, redirected
+ * files and sockets can deliver.
+ * @returns {'tty'|'none'|'pipe'|'file'|'socket'}
+ */
+function stdinKind() {
+  if (process.stdin.isTTY) return 'tty'
+  try {
+    const st = fstatSync(0)
+    if (st.isFIFO()) return 'pipe'
+    if (st.isFile()) return 'file'
+    if (typeof st.isSocket === 'function' && st.isSocket()) return 'socket'
+  } catch { /* fall through */ }
+  return 'none'
+}
+
+/**
+ * Read piped stdin with a bounded wait; null when there is nothing to read.
+ * `patient` (an explicit `--error` with no value) waits a few seconds for a
+ * human to finish typing/pasting; auto-detection waits only long enough for a
+ * shell pipe to deliver — a stray inherited-but-idle stdin (the node --test
+ * runner, some CI shells) must not add seconds to every invocation.
+ */
+async function readStdin({ patient = false } = {}) {
+  const kind = stdinKind()
+  if (kind === 'tty' || kind === 'none') return null
+  const timeoutMs = patient ? 3000 : 500
   process.stdin.setEncoding('utf8')
-  const text = await Promise.race([
-    (async () => {
-      let data = ''
-      for await (const chunk of process.stdin) data += chunk
-      return data
-    })(),
-    new Promise((resolvePromise) => setTimeout(() => resolvePromise(null), timeoutMs)),
-  ])
-  return typeof text === 'string' && text.trim() ? text : null
+  try {
+    const text = await Promise.race([
+      (async () => {
+        let data = ''
+        for await (const chunk of process.stdin) data += chunk
+        return data
+      })(),
+      new Promise((resolvePromise) => setTimeout(() => resolvePromise(null), timeoutMs)),
+    ])
+    return typeof text === 'string' && text.trim() ? text : null
+  } finally {
+    // A half-consumed stdin must never hold the event loop open after we are done.
+    try { process.stdin.destroy() } catch { /* already closed */ }
+  }
 }
 
 async function main() {
@@ -118,7 +149,9 @@ async function main() {
   // Error input precedence: --error <text> > --error (stdin) > piped stdin.
   let errorText = null
   if (typeof opts.error === 'string' && opts.error.trim()) errorText = opts.error
-  else if (opts.error === '' || !process.stdin.isTTY) errorText = await readStdin()
+  // --error with no value is the explicit "I'm piping text" signal (patient);
+  // otherwise auto-detect piped stdin with a short, non-penalising wait.
+  else errorText = await readStdin({ patient: opts.error === '' })
 
   const report = await runDiagnosis({
     env: process.env,

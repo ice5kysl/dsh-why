@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Diagnose DeepSeek Harness (dsh) plugin load failures: paste the red-screen error and get the module, its version history, and the fix — entirely in your browser.">
+<title>dsh-why — why did your dsh break?</title>
+<link rel="canonical" href="https://dsh-why.com/">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #1c2733; background: #f7f8fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e9ee; background: #10151b; }
+    .panel { background: #1a2129 !important; border-color: #2a333d !important; }
+    textarea, select { background: #131920; color: #e6e9ee; border-color: #2a333d; }
+    pre.report { background: #0b1015; border-color: #2a333d; }
+    code { background: #1a2129; }
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 64px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  h1 { font-size: 26px; margin: 0 0 8px; letter-spacing: -0.3px; }
+  .lede { color: #55606c; margin: 0 0 4px; }
+  .lang { display: flex; gap: 6px; flex: none; }
+  .lang button {
+    border: 1px solid #c6ccd4; background: transparent; color: inherit; border-radius: 6px;
+    padding: 3px 10px; font-size: 13px; cursor: pointer;
+  }
+  .lang button.on { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+  .err { color: #c0392b; font-weight: 600; }
+  .cmd { margin: 18px 0 8px; }
+  code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 14px; background: #eef1f4; padding: 1px 6px; border-radius: 4px; }
+  pre.report { background: #fbfcfd; border: 1px solid #e2e6ea; border-radius: 8px; padding: 16px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+  .panel { background: #fff; border: 1px solid #e2e6ea; border-radius: 10px; padding: 20px; margin: 16px 0; }
+  .panel label { display: block; font-weight: 600; margin-bottom: 6px; }
+  textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid #c6ccd4; border-radius: 8px; padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; }
+  .row > div { display: flex; flex-direction: column; gap: 4px; }
+  .note { font-size: 12px; color: #77818c; }
+  select { border: 1px solid #c6ccd4; border-radius: 8px; padding: 8px 10px; background: #fff; color: inherit; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; }
+  button.act { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+  button.ghost { background: transparent; color: inherit; border: 1px solid #c6ccd4; border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+  .status { font-size: 13px; color: #55606c; margin-top: 10px; }
+  .provenance { font-size: 12px; color: #8a6d1a; background: #fbf3dc; border-radius: 6px; padding: 8px 12px; margin: 0 0 10px; }
+  @media (prefers-color-scheme: dark) { .provenance { background: #2a2412; color: #e3c65a; } }
+  .muted { color: #77818c; }
+  .warn { color: #9a6700; }
+  .error { color: #c0392b; }
+  .out .report { margin: 0; }
+  footer { margin-top: 28px; font-size: 13px; color: #77818c; }
+  a { color: #1f6feb; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-en="dsh-why — why did your dsh break?" data-zh="dsh-why —— 你的 dsh 为什么挂了？">dsh-why — why did your dsh break?</h1>
+      <p class="lede" data-en="Paste the red-screen error and get the same diagnosis the CLI gives — what the module is, when official dsh changed it, how many others hit it, and the fix. Nothing you paste leaves this browser."
+         data-zh="粘贴红屏报错，得到与 CLI 相同的诊断——缺的是哪个模块、官方在哪一版改的、全生态多少人踩了同一个坑、怎么修。你粘贴的内容不会离开这个浏览器。">Paste the red-screen error and get the same diagnosis the CLI gives.</p>
+    </div>
+    <div class="lang">
+      <button id="lang-en">EN</button>
+      <button id="lang-zh">中文</button>
+    </div>
+  </header>
+
+  <div class="cmd">
+    <span data-en="Or run it locally (reads your actual install):" data-zh="或在本机运行（能读到你的真实安装）：">Or run it locally (reads your actual install):</span>
+    <br><code>npx dsh-why</code> <span class="note">·</span> <code>npx dsh-why --json</code>
+  </div>
+
+  <div class="panel">
+    <label for="input" data-en="Paste the error text" data-zh="粘贴报错文本">Paste the error text</label>
+    <textarea id="input"
+      data-en-ph='e.g. failed to import loader entry f059e6c1 (dsh-at-file): client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table'
+      data-zh-ph='例如：failed to import loader entry f059e6c1 (dsh-at-file): client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table'
+      placeholder='e.g. failed to import loader entry … missed the module table'></textarea>
+
+    <div class="row">
+      <div>
+        <label for="version" data-en="Your dsh version" data-zh="你的 dsh 版本">Your dsh version</label>
+        <select id="version"></select>
+      </div>
+      <div class="note" data-en="the module table is baked into each shell build — pick the version you actually run for an accurate verdict"
+           data-zh="模块表是烘焙进每个 shell 构建的——选你实际运行的版本，判定才准"></div>
+    </div>
+
+    <div class="actions">
+      <button id="run" class="act" data-en="Diagnose" data-zh="诊断">Diagnose</button>
+      <button id="paste" class="ghost" data-en="Paste" data-zh="粘贴">Paste</button>
+      <button id="copy" class="ghost" data-en="Copy report" data-zh="复制报告">Copy report</button>
+    </div>
+    <div id="status" class="status" hidden></div>
+  </div>
+
+  <div id="out" class="out"></div>
+
+  <p class="note" data-en="Privacy: the pasted text is diagnosed entirely in your browser and never uploaded. Data (module tables, known fixes, the compat matrix) is fetched from dsh-insights.com."
+     data-zh="隐私：粘贴的内容全程在你的浏览器里诊断，绝不上传。数据（模块表、已知修法、兼容矩阵）取自 dsh-insights.com。"></p>
+
+  <footer>
+    <a href="https://github.com/ice5kysl/dsh-why">GitHub</a> ·
+    <a href="https://www.npmjs.com/package/dsh-why">npm</a> ·
+    <a href="https://dsh-insights.com/">dsh-insights.com</a>
+  </footer>
+</div>
+<script type="module" src="./web/app.mjs"></script>
+</body>
+</html>

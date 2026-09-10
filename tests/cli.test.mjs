@@ -24,6 +24,9 @@ function runCli(args, env = {}) {
       NO_COLOR: '1',
       ...env,
     },
+    // stdin is not part of these assertions — give the child /dev/null so the
+    // CLI's auto-detect never sits on an inherited test-runner pipe.
+    stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
     timeout: 30_000,
   })

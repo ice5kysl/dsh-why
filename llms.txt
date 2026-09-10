@@ -1,0 +1,23 @@
+# dsh-why
+
+Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your install (what you have, what crashes the loader, why, and how to fix it); the web page at https://dsh-why.com diagnoses a pasted red-screen error without any install.
+
+## Data (stable URLs, crawlable)
+
+- https://dsh-insights.com/data/shell-seeds.json — per-shell client module tables (dsh-why consumes)
+- https://dsh-insights.com/data/shell-rows.json — per-shell client graph rows
+- https://dsh-insights.com/data/fixes.json — known-fix case base (dsh-why consumes)
+- https://dsh-insights.com/data/compat-observed.json — observed-compat matrix
+
+## Pages
+
+- https://dsh-why.com/ — paste an error, get the diagnosis (browser-side, nothing uploaded)
+- https://github.com/ice5kysl/dsh-why — source, README with the error-string reference
+- https://www.npmjs.com/package/dsh-why — the CLI package
+
+## The CLI
+
+- `npx dsh-why` — diagnose the current environment
+- `npx dsh-why --json` — machine-readable (CI / an LLM)
+- `npx dsh-why --offline` — bundled rule base only
+- `npx dsh-why --error "…"` — diagnose a pasted error (or pipe it via stdin)
