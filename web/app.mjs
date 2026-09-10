@@ -114,6 +114,7 @@ function mountResult(result) {
   } else {
     LAST_REPORT = null
     if (result.kind === 'empty') out.appendChild(el('p', 'empty', w.empty))
+    else if (result.kind === 'not-error') out.appendChild(el('p', 'warn-note', w.notError))
     else if (result.kind === 'bare') {
       out.appendChild(el('p', 'warn-note', w.bare))
       out.appendChild(el('span', 'bare-cmd', w.bareCmd))

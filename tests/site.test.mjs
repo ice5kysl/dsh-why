@@ -112,6 +112,23 @@ describe('diagnosePastedError (web)', () => {
     assert.match(r.text, /missed the module table/)
   })
 
+  it('a pasted dsh-why CLI report is a result, not an error', () => {
+    const r = diagnosePastedError({
+      text: 'dsh-why v0.1.6 — dsh (DeepSeek Harness) failure diagnostics\nEnvironment:\n  dsh: 0.1.2-rc.1\nFindings:\n✓ All clear — 5 plugin(s) load fine',
+      lang: 'en', seeds: SEEDS, toolVersion: '9.9.9',
+    })
+    assert.equal(r.kind, 'not-error')
+  })
+
+  it('an unreadable error never claims a local install was read (published roster, no shellPkg leak)', () => {
+    const rows = { immediate: ['@a/b'], lazy: ['@c/d'] }
+    const r = diagnosePastedError({ text: 'Segfault at 0xdeadbeef', lang: 'zh', shellVersion: '0.1.2-rc.1', seeds: SEEDS, rows, toolVersion: '9.9.9' })
+    assert.match(r.text, /观测站发布的名册/)
+    assert.doesNotMatch(r.text, /published roster/) // the shellPkg must not leak the source label
+    assert.doesNotMatch(r.text, /挂载集读自本机安装/) // the CLI's local-install claim
+    assert.doesNotMatch(r.text, /Tip: --json/) // no CLI tip on the web
+  })
+
   it('empty input → empty, nothing to render', () => {
     assert.equal(diagnosePastedError({ text: '   ', lang: 'en', seeds: SEEDS }).kind, 'empty')
   })

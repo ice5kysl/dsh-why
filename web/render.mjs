@@ -227,7 +227,7 @@ export function mountReport(container, report, lang, toolVersion) {
   container.appendChild(actions)
 
   return {
-    plainText: () => renderText(report, lang, toolVersion, { color: false, rowsNote: null, hint: false }),
+    plainText: () => renderText(report, lang, toolVersion, { color: false, rowsNote: report.rows ? webT(lang).rowsRosterNote : webT(lang).rowsFailed, hint: false }),
     issueText: () => issue ?? null,
   }
 }

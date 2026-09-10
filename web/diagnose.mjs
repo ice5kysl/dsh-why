@@ -23,6 +23,11 @@ import { knownPatterns, parseErrorText } from '../lib/errparse.mjs'
 import { diagnoseErrorRefs, resolveSeedVersion } from '../lib/rules.mjs'
 import { renderText } from '../lib/report.mjs'
 import { compareVersions, rowIndex } from '../lib/scanner.mjs'
+import { webT } from './strings.mjs'
+
+/** A dsh-why CLI report is a result, not a loader error — recognize it before treating it as unknown. */
+const REPORT_LIKE = /dsh-why\s+v\d[\d.]*/i
+const REPORT_WORDS = /All clear|全部健康|Findings:|问题列表|Environment:|环境摘要|profile:|DSH_HOME/
 
 /**
  * Build the report shape the renderer expects for an error it cannot parse
@@ -36,7 +41,7 @@ function unrecognizedReport({ text, lang, shellVersion, seeds, seedsOrigin, rows
     mode: 'online',
     unrecognizedError: String(text).trim().slice(0, 1000),
     dshHome: null,
-    install: { dshVersion: null, shellVersion: shellVersion ?? seedPick.version, shellPkg: 'published roster' },
+    install: { dshVersion: null, shellVersion: shellVersion ?? seedPick.version, shellPkg: '@deepseek-ai/dsh-web-frontend' },
     profile: null,
     availableProfiles: [],
     seed: { version: seedPick.version, source: seedPick.source, origin: seedsOrigin, words: seedPick.version ? [...(seeds?.versions?.[seedPick.version] ?? [])] : null },
@@ -65,7 +70,7 @@ function unrecognizedReport({ text, lang, shellVersion, seeds, seedsOrigin, rows
  * @param {'upstream'|'bundled'} [opts.fixesOrigin]
  * @param {object|null} [opts.observed] compat-observed document
  * @param {string} [opts.toolVersion]   dsh-why version, for the report title
- * @returns {{ kind: 'report'|'bare'|'unrecognized'|'empty', text: string, report?: object }}
+ * @returns {{ kind: 'report'|'bare'|'unrecognized'|'not-error'|'empty', text: string, report?: object }}
  */
 export function diagnosePastedError({
   text,
@@ -85,11 +90,15 @@ export function diagnosePastedError({
 
   const refs = parseErrorText(raw)
   if (!refs.recognized) {
+    // A pasted dsh-why report is a result, not a loader error — say so instead
+    // of the "grow the pattern library" honest-unknown answer.
+    if (REPORT_LIKE.test(raw) && REPORT_WORDS.test(raw)) return { kind: 'not-error', text: raw }
     // A bare red screen has no reference to work with, and unlike the CLI this
     // page cannot scan a profile — say exactly that instead of guessing.
     if (refs.bare) return { kind: 'bare', text: raw }
     const report = unrecognizedReport({ text: raw, lang, shellVersion, seeds, seedsOrigin, rows, rowsExact, fixes, fixesOrigin })
-    return { kind: 'unrecognized', report, text: renderText(report, lang, toolVersion, { color: false }) }
+    const rowsNote = rows ? webT(lang).rowsRosterNote : webT(lang).rowsFailed
+    return { kind: 'unrecognized', report, text: renderText(report, lang, toolVersion, { color: false, hint: false, rowsNote }) }
   }
 
   const report = diagnoseErrorRefs({
@@ -99,7 +108,7 @@ export function diagnosePastedError({
       // (that is what carries the module table and the rows) and nothing else.
       cliVersion: null,
       shellVersion: shellVersion ?? null,
-      shellPkg: '@deepseek-ai/dsh-web-frontend (published roster)',
+      shellPkg: '@deepseek-ai/dsh-web-frontend',
     },
     dshHome: null,
     seeds,
@@ -110,7 +119,8 @@ export function diagnosePastedError({
     rows,
     offline: false,
   })
-  return { kind: 'report', report, text: renderText(report, lang, toolVersion, { color: false }) }
+  const rowsNote = rows ? webT(lang).rowsRosterNote : webT(lang).rowsFailed
+  return { kind: 'report', report, text: renderText(report, lang, toolVersion, { color: false, hint: false, rowsNote }) }
 }
 
 /** The pattern list, for the page's "what can this read?" hint. */
