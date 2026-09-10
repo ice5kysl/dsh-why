@@ -3,3 +3,7 @@ node_modules/
 !tests/fixtures/**/node_modules/**
 .DS_Store
 *.log
+
+# generated topic pages (node web/gen/e.mjs)
+e/
+m/

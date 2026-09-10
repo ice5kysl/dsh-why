@@ -25,10 +25,12 @@ jobs:
       # The site imports the same pure modules the suite covers; run it first so
       # a browser-safety regression can never ship to the page.
       - run: npm test
-      # Assemble a clean, minimal artifact — authored files only, no .git or tests.
+      # Generate the error/module topic pages from the bundled data (no network).
+      - run: node web/gen/e.mjs
+      # Assemble a clean, minimal artifact — authored files + generated pages, no .git or tests.
       - run: |
           mkdir -p _site
-          cp -r index.html web lib llms.txt robots.txt sitemap.xml _site/
+          cp -r index.html web lib e m llms.txt robots.txt sitemap.xml _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

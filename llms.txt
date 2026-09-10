@@ -15,6 +15,20 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your i
 - https://github.com/ice5kysl/dsh-why — source, README with the error-string reference
 - https://www.npmjs.com/package/dsh-why — the CLI package
 
+## Error reference (one page per loader error, the exact string is the title)
+
+- https://dsh-why.com/e/missed-the-module-table/ — `client-modules: require("…") missed the module table`
+- https://dsh-why.com/e/cannot-resolve/ — `client-modules: cannot resolve "…"`
+- https://dsh-why.com/e/bundle-script-failed/ — `client-modules: bundle script … failed to load`
+- https://dsh-why.com/e/failed-to-load-plugins/ — `Failed to load plugins`
+
+## Module reference (per-shell lifecycle + known fix)
+
+- https://dsh-why.com/m/dsh-client-runtime/ — retired in favor of @deepseek-ai/dsh-client-store
+- https://dsh-why.com/m/dsh-client-ui-attachment/ — a lazy graph row (removed from the seed table in 0.1.0-rc.8, still resolves by batch timing)
+- https://dsh-why.com/m/dsh-client-web-react/ — removed in 0.1.0-rc.8
+- https://dsh-why.com/m/dsh-client-schema-form/ — removed in 0.1.0-rc.8
+
 ## The CLI
 
 - `npx dsh-why` — diagnose the current environment

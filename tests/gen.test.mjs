@@ -1,0 +1,64 @@
+/**
+ * The error/module topic-page generator (web/gen/e.mjs). Locks the two things
+ * that make these pages worth having for search + GEO: the exact error string is
+ * the page title, and every page is bilingual with FAQ JSON-LD.
+ */
+
+import assert from 'node:assert/strict'
+import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { describe, it } from 'node:test'
+
+import { generate } from '../web/gen/e.mjs'
+
+const out = mkdtempSync(join(tmpdir(), 'dsh-why-gen-'))
+generate(out)
+
+function page(rel) {
+  return readFileSync(join(out, rel, 'index.html'), 'utf8')
+}
+
+describe('topic-page generator', () => {
+  it('emits an error page whose title IS the exact error string', () => {
+    const html = page('e/missed-the-module-table')
+    assert.match(html, /<title>“missed the module table”/)
+    assert.match(html, /client-modules: require\(&quot;…&quot;\) missed the module table/)
+    assert.match(html, /https:\/\/dsh-why\.com\/e\/missed-the-module-table\//)
+  })
+
+  it('carries FAQ JSON-LD (GEO: LLMs can lift the Q&A verbatim)', () => {
+    const html = page('e/missed-the-module-table')
+    assert.match(html, /"@type":"FAQPage"/)
+    assert.match(html, /Failed to load plugins/)
+  })
+
+  it('is bilingual — every prose block has a zh twin', () => {
+    const html = page('e/missed-the-module-table')
+    assert.match(html, /data-zh=/)
+    assert.match(html, /根因/) // the zh heading
+    assert.match(html, /怎么修/)
+  })
+
+  it('emits a module page with the never-shipped timeline for the retired runtime', () => {
+    const html = page('m/dsh-client-runtime')
+    assert.match(html, /@deepseek-ai\/dsh-client-runtime/)
+    assert.match(html, /track t-never/)
+    assert.match(html, /dsh-client-store/) // the migration recipe
+  })
+
+  it('emits the removed-in timeline for a seed word that left in 0.1.0-rc.8', () => {
+    const html = page('m/dsh-client-ui-attachment')
+    assert.match(html, /track t-present/)
+    assert.match(html, /0\.0\.1-rc\.5/) // its first shell
+  })
+
+  it('writes exactly the known set (4 errors + 4 modules)', () => {
+    for (const p of ['missed-the-module-table', 'cannot-resolve', 'bundle-script-failed', 'failed-to-load-plugins']) {
+      assert.equal(existsSync(join(out, 'e', p, 'index.html')), true, `e/${p}`)
+    }
+    for (const p of ['dsh-client-runtime', 'dsh-client-ui-attachment', 'dsh-client-web-react', 'dsh-client-schema-form']) {
+      assert.equal(existsSync(join(out, 'm', p, 'index.html')), true, `m/${p}`)
+    }
+  })
+})
