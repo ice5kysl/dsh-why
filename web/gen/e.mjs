@@ -37,6 +37,7 @@ const ERROR_PAGES = [
     exact: 'client-modules: require("…") missed the module table',
     title: '“missed the module table” — the dsh plugin load failure, explained',
     description: 'What “missed the module table” means in DeepSeek Harness, which plugin/module is missing, and how to fix it — run npx dsh-why for a full diagnosis.',
+    sample: 'client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table',
     lead: {
       en: 'A plugin’s client bundle called require() on a module the shell does not provide. dsh does not let plugin bundles require() arbitrary npm packages — it resolves against a module table baked into each shell build.',
       zh: '某插件的 client bundle require() 了一个 shell 不提供的模块。dsh 不允许插件任意 require() npm 包——它只对照烘焙进每个 shell 构建的模块表解析。',
@@ -59,6 +60,7 @@ const ERROR_PAGES = [
     exact: 'client-modules: cannot resolve "…"',
     title: '“cannot resolve” — the async twin of the dsh module-table miss',
     description: 'The async import() twin of “missed the module table” in DeepSeek Harness — what it means and how to fix it.',
+    sample: 'client-modules: cannot resolve "@deepseek-ai/dsh-client-ui-attachment"',
     lead: {
       en: 'The async import() twin of “missed the module table”: the specifier is not a seed word, not materialized, and not a row in the boot graph.',
       zh: '这是「missed the module table」的异步 import() 版本：specifier 不是 seed 词、未物化、也不在 boot graph 里。',
@@ -74,6 +76,7 @@ const ERROR_PAGES = [
     exact: 'client-modules: bundle script … failed to load',
     title: '“bundle script failed to load” — a build-level dsh failure',
     description: 'The dsh client bundle itself failed to execute or parse — a build-level problem, not a module-table miss.',
+    sample: 'client-modules: bundle script /plugins/dsh-at-file/client.js failed to load',
     lead: { en: 'The plugin’s client bundle failed to execute or parse in the loader — a build-level problem rather than a module-table miss.', zh: '插件的 client bundle 在加载器里执行/解析失败——这是构建层面的问题，不是模块表缺失。' },
     cause: { en: 'A malformed bundle, a script that threw during evaluation, or a bundle that did not register its factory.', zh: 'bundle 畸形、求值期抛出异常、或未注册其 factory。' },
     fix: { en: 'Run npx dsh-why to confirm the plugin’s requires are satisfiable and whether a newer release exists; the author usually needs to rebuild.', zh: '跑 npx dsh-why 确认该插件的 require 是否可满足、是否有新版；通常作者需要重新构建。' },
@@ -84,6 +87,7 @@ const ERROR_PAGES = [
     exact: 'Failed to load plugins',
     title: '“Failed to load plugins” — the dsh red screen, decoded',
     description: 'The dsh web red screen. It means one enabled plugin’s client bundle threw while the loader materialized it — usually a missing module.',
+    sample: 'HARNESS Failed to load plugins: failed to import loader entry (dsh-at-file): client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table',
     lead: { en: 'The red screen when dsh web boots. One enabled plugin’s client bundle threw while the loader was materializing it — almost always a missing module.', zh: 'dsh web 启动时的红屏。某个启用插件的 client bundle 在加载器物化时抛错——几乎总是缺模块。' },
     cause: { en: 'One plugin among your enabled set is incompatible with your dsh build. The generic banner names nothing, so you need the module or plugin reference to go further.', zh: '你启用的插件里有一个与当前 dsh 构建不兼容。红屏没点名，所以要继续得拿到模块或插件引用。' },
     fix: { en: 'Run npx dsh-why for the full diagnosis; or paste the console line that follows the banner into the web tool to get the module name.', zh: '跑 npx dsh-why 做完整诊断；或把红屏后面那行控制台报错粘进网页工具拿到模块名。' },
@@ -154,9 +158,12 @@ function bi(titleEn, titleZh, enHtml, zhHtml) {
   return `<section class="e-sec"><h2 data-en="${esc(titleEn)}" data-zh="${esc(titleZh)}">${esc(titleEn)}</h2><div data-en="${esc(enHtml)}" data-zh="${esc(zhHtml)}">${enHtml}</div></section>`
 }
 
+const deepLink = (sample) => `/?e=${encodeURIComponent(sample)}`
+const ctaFor = (sample) => `<div class="cta"><code>npx dsh-why</code> <a href="${deepLink(sample)}" data-en="diagnose this exact error in the browser" data-zh="在浏览器里直接诊断这条报错">diagnose this exact error in the browser</a></div>`
+
 // ── generators ──────────────────────────────────────────────────────────────
 function errorPage(p) {
-  const cta = `<div class="cta"><code>npx dsh-why</code> <a href="/" data-en="or paste it in the browser" data-zh="或粘进浏览器">or paste it in the browser</a></div>`
+  const cta = ctaFor(p.sample)
   const body = `
   <header class="hero slim">
     <p class="kicker">DeepSeek Harness · failure diagnosis</p>
@@ -185,6 +192,7 @@ function modulePage(entry, baseName, seeds) {
 
   const caseHtml = cases.map((c) => `<div class="kf-case"><span class="kf-repo">${esc(c.repo)}</span>${c.note ? `<span class="kf-note" data-en=" — ${esc(c.noteEn ?? c.note)}" data-zh=" —— ${esc(c.note)}"> — ${esc(c.note)}</span>` : ''}${c.url ? `<a class="kf-url" href="${esc(c.url)}" rel="noopener" target="_blank">${esc(c.url)}</a>` : ''}</div>`).join('')
 
+  const cta = ctaFor(`client-modules: require("${baseName}") missed the module table`)
   const body = `
   <header class="hero slim">
     <p class="kicker">DeepSeek Harness · module reference</p>
@@ -194,15 +202,76 @@ function modulePage(entry, baseName, seeds) {
   ${section('Module history', timelineHtml)}
   ${section('Status', `<p class="mstatus">${esc(status)}</p>`)}
   <section class="e-sec"><h2 data-en="Known fix" data-zh="已知修法">Known fix</h2><div class="knownfix"><div class="kf-fix" data-en="${esc(fixEn)}" data-zh="${esc(fix)}">${esc(fixEn)}</div>${caseHtml}</div></section>
-  <div class="cta"><code>npx dsh-why</code> <a href="/" data-en="or paste it in the browser" data-zh="或粘进浏览器">or paste it in the browser</a></div>
+  ${cta}
   `
   return shell({
     title: `${baseName} — dsh module history & fix`, description: `Lifecycle of ${baseName} across dsh shells and the known fix when a plugin requires it.`, path: `m/${baseName}/`, jsonLd: '{}', body,
   })
 }
 
+/**
+ * Ecosystem-wide "most-hit" missing modules from the observed-compat matrix:
+ * non-relative require specifiers that broke plugins, minus seed words and the
+ * modules the case base already covers. One page each = the scalable "one page
+ * per error" long tail.
+ */
+function isLongTailCandidate(spec) {
+  if (spec[0] === '.' || spec[0] === '/') return false // relative/absolute (plugin-internal files)
+  if (spec.endsWith('.js')) return false               // a file reference, not a package
+  if (spec.startsWith('node:')) return false            // node: builtin — the fs/stream pages already tell that story
+  if (spec.startsWith('@deepseek-ai/')) return false    // platform packages: their story is the graph-row model, not this long tail
+  return true
+}
+
+function topMissingModules(observed, seeds, fixes, limit = 24) {
+  const counts = new Map()
+  const everSeed = new Set()
+  for (const ws of Object.values(seeds.versions ?? {})) for (const w of ws) everSeed.add(w)
+  const known = new Set(Object.keys(fixes.modules ?? {}).map((spec) => (spec.endsWith('/client') ? spec.slice(0, -'/client'.length) : spec)))
+  for (const entry of Object.values(observed.plugins ?? {})) {
+    const seen = new Set()
+    for (const result of Object.values(entry.results ?? {})) {
+      for (const spec of result?.missing ?? []) {
+        if (!isLongTailCandidate(spec)) continue
+        const base = spec.endsWith('/client') ? spec.slice(0, -'/client'.length) : spec
+        if (everSeed.has(base) || known.has(base) || seen.has(base)) continue
+        seen.add(base)
+        counts.set(base, (counts.get(base) ?? 0) + 1)
+      }
+    }
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit)
+}
+
+/** A module the case base does not cover: generic "bundle it or guard it" recipe. */
+function genericModulePage(name, count, seeds) {
+  const h = moduleHistoryFor(name, seeds)
+  const timeline = h.kind === 'never'
+    ? `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track t-never"></div><span class="tlabel" data-en="never shipped in any shell module table" data-zh="从未进入任何 shell 模块表">never shipped in any shell module table</span></div>`
+    : `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track t-present"></div><span class="tlabel" data-en="present since ${esc(h.since)}" data-zh="自 ${esc(h.since)} 起">present since ${esc(h.since)}</span></div>`
+  const eco = `<div class="ecosystem" data-en="${count} plugin(s) ecosystem-wide hit the same module" data-zh="全生态 ${count} 个插件踩了同一个模块">${count} plugin(s) ecosystem-wide hit the same module</div>`
+  const cta = ctaFor(`client-modules: require("${name}") missed the module table`)
+  const body = `
+  <header class="hero slim">
+    <p class="kicker">DeepSeek Harness · module reference</p>
+    <h1><code>${esc(name)}</code></h1>
+    <p class="lead" data-en="A package plugins require but dsh never ships in its module table — the browser half cannot resolve it." data-zh="插件会 require、但 dsh 从未放进模块表的包——浏览器端无法解析它。">A package plugins require but dsh never ships.</p>
+  </header>
+  ${section('Module history', timeline)}
+  ${section('Ecosystem', eco)}
+  ${bi('Why it breaks', '为什么崩', `<p data-en="dsh resolves require() only against the module table baked into each shell build plus registered plugin factories — never against node_modules. Node builtins (stream / buffer / fs / util / events …) and most npm packages are therefore never resolvable from a plugin’s client bundle." data-zh="dsh 的 require() 只对照烘焙进每个 shell 构建的模块表加已注册的插件工厂解析——从不查 node_modules。所以 Node 内置模块（stream / buffer / fs / util / events …）和大多数 npm 包在插件的 client bundle 里永远解析不了。">dsh resolves require() only against the shell module table, never node_modules.</p>`, `<p data-en="dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。" data-zh="dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。">dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。</p>`)}
+  ${bi('How to fix it', '怎么修', `<p data-en="Bundle the dependency into the plugin (keeping react and @deepseek-ai/cordis external to avoid duplicates), or wrap the require in try/catch and degrade gracefully. The loader resolves require() at call time, so a paired catch turns the crash into a fallback." data-zh="把该依赖打进插件自身 bundle（react 和 @deepseek-ai/cordis 保持 external 避免双份），或给 require 加 try/catch 兜底降级。加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。">Bundle it, or guard it with try/catch.</p>${cta}`, `<p data-en="Bundle it, or guard it with try/catch." data-zh="打包进插件，或加 try/catch 兜底。">打包进插件，或加 try/catch 兜底。</p>${cta}`)}
+  ${bi('FAQ', '常见问题', `<div class="qa"><p class="q" data-en="Why does require(&quot;${esc(name)}&quot;) crash in dsh but not in Node?" data-zh="为什么 require(&quot;${esc(name)}&quot;) 在 dsh 里崩、在 Node 里不崩？">Why does require("${esc(name)}") crash in dsh but not in Node?</p><p class="a" data-en="dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules. Node-only packages can never load there unless the plugin bundles them." data-zh="dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。">dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules.</p></div>`, `<div class="qa"><p class="q">为什么 require("${esc(name)}") 在 dsh 里崩、在 Node 里不崩？</p><p class="a">dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。</p></div>`)}
+  `
+  return shell({
+    title: `${name} — not in any dsh module table (${count} plugins hit it)`,
+    description: `${count} plugins ecosystem-wide require ${name}, which dsh never ships in its module table. What it means and how to fix it.`,
+    path: `m/${name}/`, jsonLd: '{}', body,
+  })
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
-export function generate(outRoot = ROOT) {
+export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
   const seeds = JSON.parse(read('lib/data/shell-seeds.json'))
   const fixes = JSON.parse(read('lib/data/fixes.json'))
   const written = []
@@ -223,10 +292,30 @@ export function generate(outRoot = ROOT) {
     written.push(`m/${slug}/`)
   }
 
+  // the scalable long tail: one page per ecosystem "most-hit" missing module
+  if (compatObserved) {
+    for (const [name, count] of topMissingModules(compatObserved, seeds, fixes)) {
+      const slug = name.split('/').pop()
+      const dir = join(outRoot, 'm', slug)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'index.html'), genericModulePage(name, count, seeds))
+      written.push(`m/${slug}/`)
+    }
+  }
+
   console.log(`dsh-why/gen: wrote ${written.length} pages`)
   for (const w of written) console.log('  /' + w)
   return written
 }
 
 // direct execution only (not when imported by the test)
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) generate()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv.includes('--live')) {
+    const url = 'https://dsh-insights.com/data/compat-observed.json'
+    fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((observed) => {
+      generate(ROOT, { compatObserved: observed?.plugins ? observed : null })
+    })
+  } else {
+    generate(ROOT)
+  }
+}

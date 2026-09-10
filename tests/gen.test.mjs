@@ -62,3 +62,41 @@ describe('topic-page generator', () => {
     }
   })
 })
+
+
+describe('long-tail module pages (compat-observed)', () => {
+  // two plugins missing 'stream', plus junk the filter must drop
+  const observed = {
+    plugins: {
+      a: { results: { x: { status: 'broken', missing: ['stream', './types.js', '@deepseek-ai/dsh-client-ui-renderer/client'] } } },
+      b: { results: { x: { status: 'broken', missing: ['stream', 'node:fs'] } } },
+      c: { results: { x: { status: 'broken', missing: ['@mixmark-io/domino'] } } },
+    },
+  }
+  const out = mkdtempSync(join(tmpdir(), 'dsh-why-gen-tail-'))
+  generate(out, { compatObserved: observed })
+
+  it('emits a page for a real never-shipped package with its ecosystem count', () => {
+    const html = readFileSync(join(out, 'm/stream/index.html'), 'utf8')
+    assert.match(html, /<h1><code>stream<\/code><\/h1>/)
+    assert.match(html, /track t-never/)
+    assert.match(html, /2 plugin\(s\) ecosystem-wide/)
+  })
+
+  it('drops plugin-internal files (.js) and platform packages from the long tail', () => {
+    assert.equal(existsSync(join(out, 'm/types.js')), false)
+    assert.equal(existsSync(join(out, 'm/dsh-client-ui-renderer')), false)
+    assert.equal(existsSync(join(out, 'm/fs')), false) // node:fs → node: prefix excluded
+  })
+
+  it('scoped npm packages get a readable slug', () => {
+    const html = readFileSync(join(out, 'm/domino/index.html'), 'utf8')
+    assert.match(html, /@mixmark-io\/domino/)
+    assert.match(html, /1 plugin\(s\) ecosystem-wide/)
+  })
+
+  it('every long-tail page carries a ?e= deep link into the paste box', () => {
+    const html = readFileSync(join(out, 'm/stream/index.html'), 'utf8')
+    assert.match(html, /\?e=client-modules%3A%20require\(%22stream%22\)/)
+  })
+})

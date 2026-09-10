@@ -25,8 +25,9 @@ jobs:
       # The site imports the same pure modules the suite covers; run it first so
       # a browser-safety regression can never ship to the page.
       - run: npm test
-      # Generate the error/module topic pages from the bundled data (no network).
-      - run: node web/gen/e.mjs
+      # Generate the topic pages: fixes.json modules + the compat-observed long
+      # tail (--live fetches the matrix; the script falls back gracefully).
+      - run: node web/gen/e.mjs --live
       # Assemble a clean, minimal artifact — authored files + generated pages, no .git or tests.
       - run: |
           mkdir -p _site
