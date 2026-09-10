@@ -79,10 +79,18 @@
   .wordmark { font: 600 19px var(--mono); color: var(--fg); display: inline-flex; align-items: center; gap: 10px; letter-spacing: -0.02em; }
   .wordmark .mark {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    width: 32px; height: 30px; border-radius: 8px; flex: none;
     background: color-mix(in srgb, var(--accent) 14%, transparent);
-    color: var(--accent); font-size: 16px; font-weight: 600; line-height: 1;
+    color: var(--accent); font-size: 15px; font-weight: 600; line-height: 1;
   }
+  /* the terminal cursor: a block bar that blinks */
+  .wordmark .mark::after {
+    content: ''; flex: none; width: 7px; height: 2px; border-radius: 1px;
+    background: currentColor; margin-left: 3px;
+    animation: mark-blink 1.05s steps(1, end) infinite;
+  }
+  @keyframes mark-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .wordmark .mark::after { animation: none; } }
   .wordmark:hover { text-decoration: none; }
   .wordmark:hover .mark { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .nav-right { display: flex; align-items: center; gap: 4px; }
