@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { classify, compareVersions, extractRequiresV2, statusFor, stripClientSuffix } from '../lib/scanner.mjs'
+import { classify, compareVersions, extractRequiresV2, rowIndex, statusFor, stripClientSuffix } from '../lib/scanner.mjs'
 
 const SEED = new Set(['react', 'react/jsx-runtime', '@deepseek-ai/dsh-client-store'])
 const NO_KNOWN = new Set()
@@ -111,36 +111,39 @@ describe('extractRequiresV2', () => {
 })
 
 describe('statusFor (guard-aware verdicts)', () => {
-
+  // A read install tree that mounts no client rows: "not a seed word and not a
+  // row" is then genuinely missing. (rows === null means "unreadable", which is
+  // the degraded 'unknown' mode tested further down.)
+  const NO_ROWS = { immediate: new Set(), lazy: new Set() }
 
   it('unguarded missing → broken', () => {
-    const r = statusFor(v2of('require("react"); require("gone-mod")'), SEED, 'self', NO_KNOWN)
+    const r = statusFor(v2of('require("react"); require("gone-mod")'), SEED, 'self', NO_KNOWN, NO_ROWS)
     assert.equal(r.status, 'broken')
     assert.deepEqual(r.missing, ['gone-mod'])
   })
 
   it('seed words and own package name resolve', () => {
-    const r = statusFor(v2of('require("react"); require("self/client")'), SEED, 'self', NO_KNOWN)
+    const r = statusFor(v2of('require("react"); require("self/client")'), SEED, 'self', NO_KNOWN, NO_ROWS)
     assert.equal(r.status, 'ok')
   })
 
   it('known plugin packages resolve via the /client strip (registered factory)', () => {
-    const r = statusFor(v2of('require("other-plugin/client")'), SEED, 'self', new Set(['other-plugin']))
+    const r = statusFor(v2of('require("other-plugin/client")'), SEED, 'self', new Set(['other-plugin']), NO_ROWS)
     assert.equal(r.status, 'ok')
   })
 
   it('try-miss with resolvable catch → ok (fallback path works)', () => {
-    const r = statusFor(v2of('try { require("gone-mod") } catch (e) { require("react") }'), SEED, 'self', NO_KNOWN)
+    const r = statusFor(v2of('try { require("gone-mod") } catch (e) { require("react") }'), SEED, 'self', NO_KNOWN, NO_ROWS)
     assert.equal(r.status, 'ok')
   })
 
   it('try-miss with empty catch → ok (graceful degradation)', () => {
-    const r = statusFor(v2of('try { require("gone-mod") } catch (e) {}'), SEED, 'self', NO_KNOWN)
+    const r = statusFor(v2of('try { require("gone-mod") } catch (e) {}'), SEED, 'self', NO_KNOWN, NO_ROWS)
     assert.equal(r.status, 'ok')
   })
 
   it('try-miss with catch-miss → broken, both sides listed', () => {
-    const r = statusFor(v2of('try { require("gone-a") } catch (e) { require("gone-b") }'), SEED, 'self', NO_KNOWN)
+    const r = statusFor(v2of('try { require("gone-a") } catch (e) { require("gone-b") }'), SEED, 'self', NO_KNOWN, NO_ROWS)
     assert.equal(r.status, 'broken')
     assert.deepEqual(r.missing, ['gone-a', 'gone-b'])
   })
@@ -232,5 +235,42 @@ describe('graph-row classification (seed → factory branches)', () => {
     const r = statusFor(v2of('try { require("gone-mod") } catch (e) { require("@deepseek-ai/dsh-client-ui-attachment") }'), SEED, 'self', NO_KNOWN, ROWS)
     assert.equal(r.status, 'conditional')
     assert.deepEqual(r.conditional, ['gone-mod', '@deepseek-ai/dsh-client-ui-attachment'])
+  })
+})
+
+describe('unobservable row model (rows === null)', () => {
+  it('an unresolvable spec is UNKNOWN, never missing', () => {
+    assert.equal(classify('@deepseek-ai/dsh-client-runtime/client', SEED, 'self', NO_KNOWN, null), 'unknown')
+    assert.equal(classify('@deepseek-ai/dsh-client-ui-attachment', SEED, 'self', NO_KNOWN, null), 'unknown')
+  })
+
+  it('seed words and known packages still resolve for certain', () => {
+    assert.equal(classify('react', SEED, 'self', NO_KNOWN, null), 'ok')
+    assert.equal(classify('other-plugin/client', SEED, 'self', new Set(['other-plugin']), null), 'ok')
+    assert.equal(classify('self/client', SEED, 'self', NO_KNOWN, null), 'ok')
+  })
+
+  it('rowIndex() reports known:false and exact:false for a null tree', () => {
+    assert.deepEqual(rowIndex(null), { immediate: new Set(), lazy: new Set(), known: false, exact: false })
+    assert.equal(rowIndex({ immediate: ['a'], lazy: ['b'] }).known, true)
+    assert.equal(rowIndex({ immediate: ['a'], lazy: [], exact: false }).exact, false)
+  })
+
+  it('unguarded unknown → conditional with the unknown bucket filled (no crash verdict)', () => {
+    const r = statusFor(v2of('require("@deepseek-ai/dsh-client-runtime/client"); require("react")'), SEED, 'self', NO_KNOWN, null)
+    assert.equal(r.status, 'conditional')
+    assert.deepEqual(r.unknown, ['@deepseek-ai/dsh-client-runtime/client'])
+    assert.deepEqual(r.conditional, [])
+    assert.equal(r.missing, undefined)
+  })
+
+  it('guarded unknown still degrades to ok (the catch covers it either way)', () => {
+    const r = statusFor(v2of('try { require("@deepseek-ai/dsh-client-runtime/client") } catch (e) { require("react") }'), SEED, 'self', NO_KNOWN, null)
+    assert.equal(r.status, 'ok')
+  })
+
+  it('an unguarded unknown never turns a broken verdict on', () => {
+    const r = statusFor(v2of('require("@deepseek-ai/dsh-client-runtime/client")'), SEED, 'self', NO_KNOWN, null)
+    assert.notEqual(r.status, 'broken')
   })
 })

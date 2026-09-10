@@ -21,9 +21,14 @@ Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修�
 
 ## 它能告诉你什么
 
-- **环境摘要**——dsh 版本、shell（模块表）版本、DSH_HOME、profile、插件数。「未找到 dsh 安装」也是合法答案，不是报错。
+- **环境摘要**——dsh 版本、shell（模块表）版本、DSH_HOME、profile、插件数，以及本次判定所依赖的**图行模型**。「未找到 dsh 安装」也是合法答案，不是报错。
 - **崩溃级结论（R1）**——插件 client bundle 里**无 try/catch 守卫**的 require 引用了当前 shell 模块表不提供的模块（守卫感知：被配对 `try/catch` 兜住的 require 不会崩——官方加载器是调用时解析的）。每个缺失模块都附**官方何时移除/何时加入/从未提供**——从已发布 shell 历史推导，不靠猜。
-- **图行感知的三层判定**——loader 的 require 解析序是 seed 词 → 已物化模块 → **已注册工厂**：每个挂载的 `dsh.client` 包都会随 combo 批次注册一个按包名命名的工厂。dsh-why 直接扫描本机 dsh 安装拿到图行清单，把每个 require 判为**可解析**（seed / immediate 行 / 已声明的 lazy 行）、**条件可解析**（未声明的 lazy 行——批次时序多半能解析，在 `dsh.client.external` 里声明即变确定）或**缺失**（任何已发布 shell 都没有——才是崩溃级）。条件可解析只报警告，不翻红。注释/字符串里的 require 字样、bundle 自带模块表的相对路径 require 都不会被误判为缺失。
+- **图行感知的四态判定**——loader 的 require 解析序是 seed 词 → 已物化模块 → **已注册工厂**：每个挂载的 `dsh.client` 包都会随 combo 批次注册一个按包名命名的工厂。dsh-why 直接读本机安装拿到图行清单（挂载集 = 内置 bundle 的 `cordis.patch.yml` 名册 ∩ 所有声明 `dsh.client` 的包），把每个 require 判为：
+  - **可解析**（seed 词 / immediate 行 / 插件已在 `dsh.client.external`+`inject` 里声明的 lazy 行）；
+  - **条件可解析**（**警告**）——未声明的 lazy 行：批次时序多半能解析，声明即变确定。**绝不翻红，也不进 issue 模板**；
+  - **缺失**（**错误**）——本机安装里没有任何东西能解释它，才是崩溃级；
+  - **无法判定**（**警告**）——本机安装树读不到，图行分支完全无法核对。报告会明确说出这一点并给出核实方法：工具绝不能把自己的盲区变成崩溃结论。
+  后两态都不影响退出码；`--json` 的 `summary.conditional` / `summary.unclassified` 供 CI 区分两态。注释/字符串里的 require 字样、bundle 自带模块表的相对路径 require 都不会被误判为缺失。
 - **版本范围警告（R2）**——插件声明的 `engines.dsh` 不覆盖你的 dsh。
 - **profile 完整性（R6）**——manifest 声明了但 `node_modules` 里没有的插件会让 dsh 启动即炸（典型的「卸载插件后 dsh 起不来」）；磁盘上的半卸载残留给警告。pnpm symlink 会跟随验证，绝不误判。
 - **报错粘贴模式（`--error` / 管道 stdin）**——直接解析加载器真实报错文本（`failed to import loader entry …`、`require("…") missed the module table`、`bundle script … failed to load`、`cannot resolve "…"`、裸 `Failed to load plugins` 退化为全量诊断），**即使本机没装该插件**也照常诊断。不认识的报错会诚实说明并列出已支持模式。
@@ -85,10 +90,10 @@ dsh 的 web shell 不允许插件 client bundle 任意 `require()` npm 包——
 
 ## 工作原理（为什么可信）
 
-1. **采集**（只读）：全局 dsh 安装（全局 npm root 下的 `@deepseek-ai/dsh` 与 shell 构建 `@deepseek-ai/dsh-web-frontend`）、`DSH_HOME`（默认 `~/.dsh`）的 profile 清单（与 `dsh plugin add` 同一 seam）、每个启用插件的 client bundle。
+1. **采集**（只读）：全局 dsh 安装（全局 npm root 下的 `@deepseek-ai/dsh` 与 shell 构建 `@deepseek-ai/dsh-web-frontend`）**连同它的客户端图行**（所有声明 `dsh.client` 的包 ∩ 内置 bundle 的 `cordis.patch.yml` 名册；immediate / lazy 取自各包自己的声明）、`DSH_HOME`（默认 `~/.dsh`）的 profile 清单（与 `dsh plugin add` 同一 seam）、每个启用插件的 client bundle。
 2. **扫描** bundle 的字面量 `require("…")` 集合——**守卫感知**扫描器（花括号配对识别 `try{…}catch{…}`，跳过字符串/模板/注释/正则字面量）。这正是 dsh-insights.com 实测矩阵的同款代码，本地结论与线上生态数据同口径。
 3. **规则库**：R1 模块表缺失（含逐模块历史）、R2 `engines.dsh` 覆盖、R3 npm 新版、R4/R5 对照实测矩阵（已观测 2300+ 插件）、R6 profile 完整性——外加 [fixes.json 案例库](https://dsh-insights.com/data/fixes.json)的已知修法。
-4. **优雅降级**：`--offline`（或网络不可达）回退到包内 shell 历史快照 + 本地规则库。诊断工具自己永远不能崩。
+4. **优雅降级**：`--offline`（或网络不可达）回退到包内 shell 历史快照 + 本地规则库；安装树读不到时，把自己的判定降级为「无法判定」警告，而不是编造崩溃。环境区永远写明这次用的是哪种图行模型（`shell graph rows: 9 immediate + 37 lazy` / `scan-only` / `UNREADABLE`）——模型本身就是结论的一部分。诊断工具自己永远不能崩，也永远不能比它的输入更自信。
 
 **隐私**：在线模式只发三类 GET 请求——dsh-insights.com 数据文件、npm registry 的 `latest` 元数据（仅限你已装的插件名）。你的机器信息永不上传，磁盘永不写入。
 

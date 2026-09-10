@@ -123,6 +123,39 @@ describe('dsh-why CLI', () => {
     assert.doesNotMatch(stdout, /R6\] fake-healthy-plugin/) // the pnpm symlink must not be flagged
   })
 
+  it('graph rows: undeclared lazy row → conditional warning, exit 0 (the vision-router class)', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'rows'])
+    assert.equal(status, 0)
+    assert.match(stdout, /shell graph rows: 1 immediate \+ 1 lazy/)
+    assert.match(stdout, /\[WARN·R1\] fake-row-plugin: resolves only conditionally/)
+    assert.match(stdout, /declare them in the plugin’s dsh\.client\.external/)
+    assert.doesNotMatch(stdout, /crashes the loader/)
+    assert.doesNotMatch(stdout, /fake-row-declared-plugin/) // declared → silent
+    assert.match(stdout, /1 conditional require\(s\)/)
+  })
+
+  it('graph rows unreadable → unclassified warnings, exit 0, and a loud caveat', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'web'], {
+      DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global-partial'),
+    })
+    assert.equal(status, 0)
+    assert.match(stdout, /shell graph rows: UNREADABLE/)
+    assert.match(stdout, /\[WARN·R1\] fake-crash-plugin: require\(s\) could not be classified/)
+    assert.match(stdout, /not a crash verdict/)
+    assert.match(stdout, /unclassified require\(s\)/)
+    assert.doesNotMatch(stdout, /crashes the loader/)
+    assert.doesNotMatch(stdout, /Issue template/)
+  })
+
+  it('graph rows scan-only fallback is disclosed, verdicts keep working', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'web'], {
+      DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global-noroster'),
+    })
+    assert.equal(status, 1) // the never-shipped module is still a real crash
+    assert.match(stdout, /shell graph rows: 3 client package\(s\) found/)
+    assert.match(stdout, /\[ERROR·R1\] fake-crash-plugin/)
+  })
+
   it('--error with inline text diagnoses the pasted references', () => {
     const { status, stdout } = runCli([
       '--offline',

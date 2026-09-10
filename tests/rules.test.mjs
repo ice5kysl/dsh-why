@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { readProfile } from '../lib/collect.mjs'
+import { collectShellRows, readProfile } from '../lib/collect.mjs'
 import { buildIssueTemplate, renderText } from '../lib/report.mjs'
 import { countEcosystemMissing, diagnose, moduleHistory, resolveSeedVersion } from '../lib/rules.mjs'
 import { compareVersions } from '../lib/scanner.mjs'
@@ -26,6 +26,9 @@ const INSTALL = {
   shellVersionExact: true,
 }
 
+/** The fixture install's client graph rows — the same input the CLI collects. */
+const ROWS = collectShellRows(join(FIXTURES, 'npm-global'))
+
 function runFixture(profileName, extra = {}) {
   const profileData = readProfile(profileName, join(FIXTURES, 'dsh-home', 'profiles', profileName))
   assert.equal(profileData.manifestFound, true)
@@ -36,6 +39,7 @@ function runFixture(profileName, extra = {}) {
     availableProfiles: ['clean', 'web'],
     seeds: SEEDS,
     seedsOrigin: 'bundled',
+    rows: ROWS,
     offline: true,
     now: new Date('2026-09-10T00:00:00Z'),
     ...extra,
@@ -274,6 +278,81 @@ describe('moduleHistory (derived from the real bundled seed snapshot)', () => {
     const h = moduleHistory('@deepseek-ai/dsh-client-ui-dockkit', versions, seedsByVersion)
     assert.equal(h.since, '0.1.5-alpha.1')
     assert.equal(h.removedIn, null)
+  })
+})
+
+describe('diagnose · graph rows (the vision-router class)', () => {
+  const report = runFixture('rows')
+
+  it('collectShellRows reads the mounted set from the fixture install (roster filter applied)', () => {
+    assert.equal(ROWS.exact, true)
+    assert.deepEqual(ROWS.immediate, ['@deepseek-ai/dsh-client-connection'])
+    assert.deepEqual(ROWS.lazy, ['@deepseek-ai/dsh-client-ui-attachment'])
+    // client-capable but mounted by no bundle → not a row
+    assert.equal(ROWS.lazy.includes('@deepseek-ai/dsh-client-ui-directory-picker-native'), false)
+    assert.deepEqual(report.rows, { exact: true, immediate: ROWS.immediate, lazy: ROWS.lazy })
+  })
+
+  it('undeclared lazy row → conditional WARNING, never a crash (exit-code safe)', () => {
+    const row = byName(report)['fake-row-plugin']
+    assert.equal(row.status, 'conditional')
+    assert.deepEqual(row.conditional, ['@deepseek-ai/dsh-client-ui-attachment'])
+    const [finding] = findingsFor(report, 'R1')
+    assert.equal(finding.severity, 'warning')
+    assert.equal(finding.reason, 'undeclared-lazy-row')
+    assert.deepEqual(finding.conditional, ['@deepseek-ai/dsh-client-ui-attachment'])
+    assert.equal(report.summary.errors, 0)
+    assert.equal(report.summary.conditional, 1)
+    assert.equal(report.summary.unclassified, 0)
+  })
+
+  it('immediate rows resolve without any declaration (no finding)', () => {
+    // fake-row-plugin also requires the immediate @deepseek-ai/dsh-client-connection
+    assert.equal(byName(report)['fake-row-plugin'].requires.includes('@deepseek-ai/dsh-client-connection'), true)
+  })
+
+  it('a plugin that DECLARES the lazy row is silent', () => {
+    assert.equal(byName(report)['fake-row-declared-plugin'].status, 'ok')
+    assert.equal(report.findings.filter((f) => f.plugin === 'fake-row-declared-plugin').length, 0)
+  })
+
+  it('conditional findings never reach the issue template or the crash count', () => {
+    assert.equal(report.summary.errors, 0)
+    assert.equal(report.summary.healthy, false)
+    assert.equal(buildIssueTemplate(report, 'en', '9.9.9'), null)
+  })
+})
+
+describe('diagnose · row model unavailable (degraded install tree)', () => {
+  const report = runFixture('rows', { rows: null })
+
+  it('an unobservable row branch yields UNCLASSIFIED warnings, never crashes', () => {
+    assert.equal(report.rows, null)
+    assert.equal(report.summary.errors, 0)
+    assert.ok(report.summary.unclassified > 0)
+    assert.equal(report.summary.conditional, 0)
+    const findings = findingsFor(report, 'R1')
+    assert.ok(findings.length > 0)
+    for (const f of findings) {
+      assert.notEqual(f.severity, 'error')
+      assert.equal(f.reason, 'row-model-unavailable')
+      assert.ok(f.unknown.length > 0)
+      assert.equal(f.missing, undefined)
+      assert.equal(f.conditional, undefined)
+    }
+  })
+
+  it('the unclassified specs still carry module history (never-shipped vs removed)', () => {
+    const declared = findingsFor(report, 'R1').find((f) => f.plugin === 'fake-row-declared-plugin')
+    assert.equal(declared.history['@deepseek-ai/dsh-client-ui-attachment'].removedIn, '0.1.0-rc.8')
+    assert.equal(declared.unknown.includes('@deepseek-ai/dsh-client-ui-attachment'), true)
+  })
+
+  it('a degraded run cannot report the crash class it cannot verify', () => {
+    // the same fixture reports a crash when rows ARE readable (see below)
+    const readable = runFixture('web')
+    assert.equal(byName(readable)['fake-crash-plugin'].status, 'broken')
+    assert.equal(report.summary.errors, 0)
   })
 })
 

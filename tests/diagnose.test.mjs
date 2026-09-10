@@ -10,6 +10,7 @@ import { afterEach, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { runDiagnosis } from '../lib/diagnose.mjs'
+import { buildFixPrompt } from '../lib/report.mjs'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures')
 
@@ -49,6 +50,61 @@ describe('runDiagnosis', () => {
     assert.equal(report.degraded, false)
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
     assert.equal(r1.knownFixes, undefined) // fixes.json is an online-only source
+    // the row model ran (mounted set read from the install), so the crash is a crash
+    assert.deepEqual(report.rows, {
+      exact: true,
+      immediate: ['@deepseek-ai/dsh-client-connection'],
+      lazy: ['@deepseek-ai/dsh-client-ui-attachment'],
+    })
+    assert.equal(report.summary.conditional, 0)
+    assert.equal(report.summary.unclassified, 0)
+  })
+
+  it('an unreadable install tree degrades R1 to unclassified warnings (exit-safe)', async () => {
+    globalThis.fetch = () => { throw new Error('network must not be called offline') }
+    const report = await runDiagnosis({
+      env: { ...ENV, DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global-partial') },
+      offline: true,
+    })
+    assert.equal(report.rows, null)
+    assert.equal(report.summary.errors, 0)
+    assert.equal(report.summary.conditional, 0)
+    assert.ok(report.summary.unclassified > 0)
+    const findings = report.findings.filter((f) => f.rule === 'R1' && f.severity === 'warning')
+    assert.ok(findings.length > 0)
+    assert.ok(findings.every((f) => f.reason === 'row-model-unavailable'))
+  })
+
+  it('--error in degraded mode reports the pasted module as unclassified, not as a crash', async () => {
+    globalThis.fetch = () => { throw new Error('network must not be called offline') }
+    const report = await runDiagnosis({
+      env: { ...ENV, DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global-partial') },
+      offline: true,
+      errorText: 'client-modules: require("@deepseek-ai/dsh-client-ui-attachment") missed the module table',
+    })
+    assert.equal(report.rows, null)
+    assert.equal(report.summary.errors, 0)
+    assert.equal(report.summary.unclassified, 1)
+    const [finding] = report.findings.filter((f) => f.rule === 'R1')
+    assert.equal(finding.severity, 'warning')
+    assert.equal(finding.resolvableNow, 'unknown')
+    assert.equal(finding.reason, 'row-model-unavailable')
+    assert.match(buildFixPrompt(report, 'en', '9.9.9'), /UNCLASSIFIED module from the pasted error/)
+  })
+
+  it('--error with a readable install classifies a built-in row as timing-dependent', async () => {
+    globalThis.fetch = () => { throw new Error('network must not be called offline') }
+    const report = await runDiagnosis({
+      env: ENV,
+      offline: true,
+      errorText: 'client-modules: require("@deepseek-ai/dsh-client-ui-attachment") missed the module table',
+    })
+    assert.equal(report.summary.errors, 0)
+    assert.equal(report.summary.conditional, 1)
+    assert.equal(report.summary.unclassified, 0)
+    const [finding] = report.findings.filter((f) => f.rule === 'R1')
+    assert.equal(finding.resolvableNow, 'conditional')
+    assert.equal(finding.reason, 'module-is-graph-row')
   })
 
   it('online mode engages R3/R4 via the stubbed upstreams', async () => {
