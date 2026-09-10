@@ -1,37 +1,45 @@
 # dsh-why
 
-Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your install (what you have, what crashes the loader, why, and how to fix it); the web page at https://dsh-why.com diagnoses a pasted red-screen error without any install.
+Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your install; the page at https://dsh-why.com diagnoses a pasted red-screen error without any install.
 
-## Data (stable URLs, crawlable)
-
-- https://dsh-insights.com/data/shell-seeds.json — per-shell client module tables (dsh-why consumes)
+## Data (stable URLs)
+- https://dsh-insights.com/data/shell-seeds.json — per-shell client module tables
 - https://dsh-insights.com/data/shell-rows.json — per-shell client graph rows
-- https://dsh-insights.com/data/fixes.json — known-fix case base (dsh-why consumes)
+- https://dsh-insights.com/data/fixes.json — known-fix case base
 - https://dsh-insights.com/data/compat-observed.json — observed-compat matrix
 
 ## Pages
-
-- https://dsh-why.com/ — paste an error, get the diagnosis (browser-side, nothing uploaded)
-- https://github.com/ice5kysl/dsh-why — source, README with the error-string reference
+- https://dsh-why.com/ — paste an error, get the diagnosis
+- https://github.com/ice5kysl/dsh-why — source
 - https://www.npmjs.com/package/dsh-why — the CLI package
 
-## Error reference (one page per loader error, the exact string is the title)
-
+## Error reference (the exact string is the title)
 - https://dsh-why.com/e/missed-the-module-table/ — `client-modules: require("…") missed the module table`
 - https://dsh-why.com/e/cannot-resolve/ — `client-modules: cannot resolve "…"`
 - https://dsh-why.com/e/bundle-script-failed/ — `client-modules: bundle script … failed to load`
 - https://dsh-why.com/e/failed-to-load-plugins/ — `Failed to load plugins`
 
-## Module reference (per-shell lifecycle + known fix)
-
-- https://dsh-why.com/m/dsh-client-runtime/ — retired in favor of @deepseek-ai/dsh-client-store
-- https://dsh-why.com/m/dsh-client-ui-attachment/ — a lazy graph row (removed from the seed table in 0.1.0-rc.8, still resolves by batch timing)
-- https://dsh-why.com/m/dsh-client-web-react/ — removed in 0.1.0-rc.8
-- https://dsh-why.com/m/dsh-client-schema-form/ — removed in 0.1.0-rc.8
+## Module reference (per-shell lifecycle)
+- https://dsh-why.com/m/dsh-client-runtime/ — @deepseek-ai/dsh-client-runtime (never-seeded（15 个已发布 shell 的模块表都没有它）)
+- https://dsh-why.com/m/dsh-client-ui-attachment/ — @deepseek-ai/dsh-client-ui-attachment (removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行：bundle 随 combo 批次注册工厂，require 通常仍可解析（非崩溃；时序无硬保证）)
+- https://dsh-why.com/m/dsh-client-web-react/ — @deepseek-ai/dsh-client-web-react (removed-in 0.1.0-rc.8)
+- https://dsh-why.com/m/dsh-client-schema-form/ — @deepseek-ai/dsh-client-schema-form (removed-in 0.1.0-rc.8)
+- https://dsh-why.com/m/stream/ — stream (not in any shell module table)
+- https://dsh-why.com/m/buffer/ — buffer (not in any shell module table)
+- https://dsh-why.com/m/util/ — util (not in any shell module table)
+- https://dsh-why.com/m/fs/ — fs (not in any shell module table)
+- https://dsh-why.com/m/events/ — events (not in any shell module table)
+- https://dsh-why.com/m/domino/ — @mixmark-io/domino (not in any shell module table)
+- https://dsh-why.com/m/url/ — url (not in any shell module table)
+- https://dsh-why.com/m/zlib/ — zlib (not in any shell module table)
+- https://dsh-why.com/m/assert/ — assert (not in any shell module table)
+- https://dsh-why.com/m/process/ — process (not in any shell module table)
+- https://dsh-why.com/m/path/ — path (not in any shell module table)
+- https://dsh-why.com/m/esm-env/ — esm-env (not in any shell module table)
+- https://dsh-why.com/m/dsh-mcp-manager/ — @wanghailong0419/dsh-mcp-manager (not in any shell module table)
 
 ## The CLI
-
 - `npx dsh-why` — diagnose the current environment
 - `npx dsh-why --json` — machine-readable (CI / an LLM)
 - `npx dsh-why --offline` — bundled rule base only
-- `npx dsh-why --error "…"` — diagnose a pasted error (or pipe it via stdin)
+- `npx dsh-why --error "…"` — diagnose a pasted error (or pipe via stdin)

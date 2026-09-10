@@ -275,6 +275,7 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
   const seeds = JSON.parse(read('lib/data/shell-seeds.json'))
   const fixes = JSON.parse(read('lib/data/fixes.json'))
   const written = []
+  const moduleIndex = [] // { slug, name } — the landing page's reference list
 
   for (const p of ERROR_PAGES) {
     const dir = join(outRoot, 'e', p.slug)
@@ -290,6 +291,7 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'index.html'), modulePage(entry, baseName, seeds))
     written.push(`m/${slug}/`)
+    moduleIndex.push({ slug, name: baseName, note: entry.status ?? null })
   }
 
   // the scalable long tail: one page per ecosystem "most-hit" missing module
@@ -300,12 +302,59 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, 'index.html'), genericModulePage(name, count, seeds))
       written.push(`m/${slug}/`)
+      moduleIndex.push({ slug, name, note: 'not in any shell module table' })
     }
   }
+
+  emitInventory(outRoot, written, moduleIndex)
 
   console.log(`dsh-why/gen: wrote ${written.length} pages`)
   for (const w of written) console.log('  /' + w)
   return written
+}
+
+/** The generator owns the page inventory: sitemap + llms.txt + the reference list. */
+function emitInventory(outRoot, written, moduleIndex) {
+  const paths = [...written].sort()
+
+  // sitemap
+  const urlset = paths.map((p) => `  <url><loc>${ORIGIN}/${p}</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`).join('\n')
+  writeFileSync(join(outRoot, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${ORIGIN}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n${urlset}\n</urlset>\n`)
+
+  // llms.txt (the AI-facing directory, bilingual note)
+  const errLines = ERROR_PAGES.map((p) => `- ${ORIGIN}/e/${p.slug}/ — \`${p.exact}\``).join('\n')
+  const modLines = moduleIndex.map((m) => `- ${ORIGIN}/m/${m.slug}/ — ${m.name}${m.note ? ` (${m.note})` : ''}`).join('\n')
+  writeFileSync(join(outRoot, 'llms.txt'), `# dsh-why
+
+Diagnose DeepSeek Harness (dsh) plugin load failures. \`npx dsh-why\` reads your install; the page at ${ORIGIN} diagnoses a pasted red-screen error without any install.
+
+## Data (stable URLs)
+- https://dsh-insights.com/data/shell-seeds.json — per-shell client module tables
+- https://dsh-insights.com/data/shell-rows.json — per-shell client graph rows
+- https://dsh-insights.com/data/fixes.json — known-fix case base
+- https://dsh-insights.com/data/compat-observed.json — observed-compat matrix
+
+## Pages
+- ${ORIGIN}/ — paste an error, get the diagnosis
+- https://github.com/ice5kysl/dsh-why — source
+- https://www.npmjs.com/package/dsh-why — the CLI package
+
+## Error reference (the exact string is the title)
+${errLines}
+
+## Module reference (per-shell lifecycle)
+${modLines}
+
+## The CLI
+- \`npx dsh-why\` — diagnose the current environment
+- \`npx dsh-why --json\` — machine-readable (CI / an LLM)
+- \`npx dsh-why --offline\` — bundled rule base only
+- \`npx dsh-why --error "…"\` — diagnose a pasted error (or pipe via stdin)
+`)
+
+  // the landing page's reference list (module group renders from this)
+  mkdirSync(join(outRoot, 'web'), { recursive: true })
+  writeFileSync(join(outRoot, 'web', 'ref-pages.json'), JSON.stringify({ modules: moduleIndex }))
 }
 
 // direct execution only (not when imported by the test)

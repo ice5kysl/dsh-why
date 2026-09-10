@@ -236,6 +236,26 @@ function boot() {
     try { $('input').value = decodeURIComponent(q.get('e')) } catch { $('input').value = q.get('e') }
   }
 
+  // the reference index's module list is generated (it grows with the matrix)
+  fetch('web/ref-pages.json')
+    .then((r) => r.json())
+    .then(({ modules }) => {
+      const ul = $('ref-modules')
+      if (!ul || !modules?.length) return
+      ul.textContent = ''
+      for (const m of modules) {
+        const li = document.createElement('li')
+        const a = document.createElement('a')
+        a.href = `/m/${m.slug}/`
+        const code = document.createElement('code')
+        code.textContent = m.slug
+        a.appendChild(code)
+        li.appendChild(a)
+        ul.appendChild(li)
+      }
+    })
+    .catch(() => { /* the static error links remain; modules fall back to the sitemap */ })
+
   loadData()
     .then((data) => {
       fillVersions(data.seeds)
