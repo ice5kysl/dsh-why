@@ -55,6 +55,13 @@ describe('topic-page generator', () => {
     assert.match(html, /0\.0\.1-rc\.5/) // its first shell
   })
 
+  it('the lang toggle persists the choice (localStorage) and honors ?lang= first', () => {
+    const html = page('e/missed-the-module-table')
+    assert.match(html, /localStorage\.getItem\('dsh-why\.lang'\)/)
+    assert.match(html, /localStorage\.setItem\('dsh-why\.lang'/)
+    assert.match(html, /get\('lang'\)/)
+  })
+
   it('writes exactly the known set (4 errors + 4 modules)', () => {
     for (const p of ['missed-the-module-table', 'cannot-resolve', 'bundle-script-failed', 'failed-to-load-plugins']) {
       assert.equal(existsSync(join(out, 'e', p, 'index.html')), true, `e/${p}`)

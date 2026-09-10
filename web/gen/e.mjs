@@ -105,7 +105,7 @@ function moduleHistoryFor(baseName, seeds) {
 
 // ── page shell ──────────────────────────────────────────────────────────────
 function langToggleScript() {
-  return `<script>(function(){function l(){return new URLSearchParams(location.search).get('lang')||((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en')}function a(){var x=l();document.documentElement.dataset.lang=x;document.querySelectorAll('.langsel button').forEach(function(n){n.classList.toggle('on',n.dataset.l===x)})}a();document.querySelectorAll('.langsel button').forEach(function(n){n.addEventListener('click',function(){var u=new URL(location.href);u.searchParams.set('lang',n.dataset.l);location=u})})})();</script>`
+  return `<script>(function(){function saved(){try{return localStorage.getItem('dsh-why.lang')}catch(e){return null}}function l(){return new URLSearchParams(location.search).get('lang')||saved()||((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en')}function a(){var x=l();document.documentElement.dataset.lang=x;document.querySelectorAll('.langsel button').forEach(function(n){n.classList.toggle('on',n.dataset.l===x)})}a();document.querySelectorAll('.langsel button').forEach(function(n){n.addEventListener('click',function(){try{localStorage.setItem('dsh-why.lang',n.dataset.l)}catch(e){}var u=new URL(location.href);u.searchParams.set('lang',n.dataset.l);location=u})})})();</script>`
 }
 
 function shell({ title, description, path, jsonLd, body }) {
