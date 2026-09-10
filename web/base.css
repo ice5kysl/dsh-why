@@ -255,3 +255,12 @@
 .cta { display: flex; align-items: center; gap: 12px; margin: 18px 0 0; padding: 12px 16px; border-radius: 8px; box-shadow: var(--card); background: var(--bg-soft); font: 400 14px var(--mono); }
 .cta code { font-size: 14px; }
 .cta a { font: 400 13px var(--sans); }
+
+/* ── reference index (links into /e/* and /m/*) ──────────────────────────── */
+.ref { margin: 32px 0 0; padding-top: 24px; border-top: 1px solid var(--line-soft); }
+.ref h2 { margin: 0 0 14px; font: 600 18px var(--sans); letter-spacing: -0.01em; }
+.ref-group { margin: 0 0 14px; }
+.ref-group h3 { margin: 0 0 6px; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--fg-4); }
+.ref ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.ref li a { color: var(--fg-2); font: 400 14px var(--mono); }
+.ref li a:hover { color: var(--accent); text-decoration: none; }
