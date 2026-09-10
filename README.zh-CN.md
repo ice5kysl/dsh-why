@@ -23,6 +23,7 @@ Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修�
 
 - **环境摘要**——dsh 版本、shell（模块表）版本、DSH_HOME、profile、插件数。「未找到 dsh 安装」也是合法答案，不是报错。
 - **崩溃级结论（R1）**——插件 client bundle 里**无 try/catch 守卫**的 require 引用了当前 shell 模块表不提供的模块（守卫感知：被配对 `try/catch` 兜住的 require 不会崩——官方加载器是调用时解析的）。每个缺失模块都附**官方何时移除/何时加入/从未提供**——从已发布 shell 历史推导，不靠猜。
+- **图行感知的三层判定**——loader 的 require 解析序是 seed 词 → 已物化模块 → **已注册工厂**：每个挂载的 `dsh.client` 包都会随 combo 批次注册一个按包名命名的工厂。dsh-why 直接扫描本机 dsh 安装拿到图行清单，把每个 require 判为**可解析**（seed / immediate 行 / 已声明的 lazy 行）、**条件可解析**（未声明的 lazy 行——批次时序多半能解析，在 `dsh.client.external` 里声明即变确定）或**缺失**（任何已发布 shell 都没有——才是崩溃级）。条件可解析只报警告，不翻红。注释/字符串里的 require 字样、bundle 自带模块表的相对路径 require 都不会被误判为缺失。
 - **版本范围警告（R2）**——插件声明的 `engines.dsh` 不覆盖你的 dsh。
 - **profile 完整性（R6）**——manifest 声明了但 `node_modules` 里没有的插件会让 dsh 启动即炸（典型的「卸载插件后 dsh 起不来」）；磁盘上的半卸载残留给警告。pnpm symlink 会跟随验证，绝不误判。
 - **报错粘贴模式（`--error` / 管道 stdin）**——直接解析加载器真实报错文本（`failed to import loader entry …`、`require("…") missed the module table`、`bundle script … failed to load`、`cannot resolve "…"`、裸 `Failed to load plugins` 退化为全量诊断），**即使本机没装该插件**也照常诊断。不认识的报错会诚实说明并列出已支持模式。
