@@ -11,7 +11,7 @@ import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { collectShellRows, readProfile } from '../lib/collect.mjs'
-import { buildIssueTemplate, renderText } from '../lib/report.mjs'
+import { buildFixPrompt, buildIssueTemplate, renderText } from '../lib/report.mjs'
 import { countEcosystemMissing, diagnose, moduleHistory, resolveSeedVersion } from '../lib/rules.mjs'
 import { compareVersions } from '../lib/scanner.mjs'
 
@@ -223,8 +223,10 @@ describe('fixes.json case base (event-level repair guidance)', () => {
       '@deepseek-ai/dsh-client-runtime/client': {
         status: 'never-seeded',
         fix: '迁移到 @deepseek-ai/dsh-client-store（0.1.2-alpha.2 起在模块表）',
+        fixEn: 'Migrate to @deepseek-ai/dsh-client-store (in the module table since 0.1.2-alpha.2)',
         cases: [
-          { repo: 'Fisfzy/dsh-ego-browser', url: 'https://github.com/Fisfzy/dsh-ego-browser/issues/32', note: 'main/v0.8.1 已迁移，只差 publish' },
+          { repo: 'Fisfzy/dsh-ego-browser', url: 'https://github.com/Fisfzy/dsh-ego-browser/issues/32', note: 'main/v0.8.1 已迁移，只差 publish', noteEn: 'main/v0.8.1 already migrated — only the npm publish is missing' },
+          // deliberately no noteEn: the English render must fall back to the Chinese note
           { repo: 'RevolutionLA/dsh-dream-skin', url: 'https://github.com/RevolutionLA/dsh-dream-skin/issues/47', note: 'store-first + try/catch 兜底' },
         ],
       },
@@ -271,8 +273,19 @@ describe('fixes.json case base (event-level repair guidance)', () => {
     const en = renderText(report, 'en', '0.1.1', { color: false })
     assert.match(en, /Known fix \(from the ecosystem case base\)/)
     assert.match(en, /case: Fisfzy\/dsh-ego-browser/)
-    // the issue template picks up the fix line too
+    // en selects the parallel fields…
+    assert.match(en, /Migrate to @deepseek-ai\/dsh-client-store/)
+    assert.match(en, /only the npm publish is missing/)
+    assert.doesNotMatch(en, /迁移到 @deepseek-ai\/dsh-client-store/)
+    // …and falls back to the Chinese source when a translation is missing
+    assert.match(en, /store-first \+ try\/catch 兜底/)
+    // zh always reads the canonical Chinese fields
+    assert.match(zh, /main\/v0\.8\.1 已迁移，只差 publish/)
+    // the issue template and the agent prompt pick by language too
     assert.match(buildIssueTemplate(report, 'zh', '0.1.1'), /已知修法：迁移到 @deepseek-ai\/dsh-client-store/)
+    assert.match(buildIssueTemplate(report, 'en', '0.1.1'), /known fix: Migrate to @deepseek-ai\/dsh-client-store/)
+    assert.match(buildFixPrompt(report, 'en', '0.1.1'), /Migrate to @deepseek-ai\/dsh-client-store/)
+    assert.match(buildFixPrompt(report, 'zh', '0.1.1'), /迁移到 @deepseek-ai\/dsh-client-store/)
   })
 })
 
@@ -356,6 +369,16 @@ describe('diagnose · graph rows (the vision-router class)', () => {
     // …and the offline snapshot is labelled as such
     const bundled = runFixture('rows', { fixes: FIXES_FOR_ROWS, fixesOrigin: 'bundled' })
     assert.match(renderText(bundled, 'en', '9.9.9', { color: false }), /BUNDLED case-base snapshot/)
+  })
+
+  it('an English report falls back to the Chinese recipe when fixEn is absent', () => {
+    // FIXES_FOR_ROWS has no fixEn/noteEn: Chinese is the canonical source
+    const report = runFixture('rows', { fixes: FIXES_FOR_ROWS })
+    const en = renderText(report, 'en', '9.9.9', { color: false })
+    assert.match(en, /首选：在 dsh\.client\.external/)
+    assert.match(en, /反面教材/)
+    const [finding] = findingsFor(report, 'R1')
+    assert.equal(finding.knownFixes['@deepseek-ai/dsh-client-ui-attachment'].fixEn, undefined)
   })
 
   it('the unclassifiable flavor stays advisory-only (no recipe on an unverified module)', () => {

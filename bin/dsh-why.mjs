@@ -107,12 +107,13 @@ async function main() {
   if (parsed.error) {
     console.error(`${preLang === 'zh' ? '无法识别的参数' : 'unrecognized option'}: ${parsed.error}\n`)
     console.error(usage(preLang))
-    process.exit(2)
+    process.exitCode = 2
+    return
   }
   const { opts } = parsed
   const lang = detectLang(process.env, opts.lang)
-  if (opts.help) { console.log(usage(lang)); process.exit(0) }
-  if (opts.version) { console.log(VERSION); process.exit(0) }
+  if (opts.help) { console.log(usage(lang)); return }
+  if (opts.version) { console.log(VERSION); return }
 
   // Error input precedence: --error <text> > --error (stdin) > piped stdin.
   let errorText = null
@@ -140,11 +141,14 @@ async function main() {
     console.log(renderText(report, lang, VERSION, { color, showPrompt: opts.prompt }))
   }
 
-  process.exit(report.summary.errors > 0 ? 1 : 0)
+  // process.exitCode, never process.exit(): a --json report is now tens of KB,
+  // and exiting with output still queued truncates piped stdout — exactly how CI
+  // consumes it (`dsh-why --json | jq`). Letting Node exit on its own flushes.
+  process.exitCode = report.summary.errors > 0 ? 1 : 0
 }
 
 main().catch((error) => {
   // The diagnostic tool must never crash; if it does, say so plainly.
   console.error(`dsh-why: internal error (please report: https://github.com/ice5kysl/dsh-why/issues): ${error?.message ?? error}`)
-  process.exit(2)
+  process.exitCode = 2
 })

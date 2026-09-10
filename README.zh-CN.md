@@ -92,7 +92,7 @@ dsh 的 web shell 不允许插件 client bundle 任意 `require()` npm 包——
 
 1. **采集**（只读）：全局 dsh 安装（全局 npm root 下的 `@deepseek-ai/dsh` 与 shell 构建 `@deepseek-ai/dsh-web-frontend`）**连同它的客户端图行**（所有声明 `dsh.client` 的包 ∩ 内置 bundle 的 `cordis.patch.yml` 名册；immediate / lazy 取自各包自己的声明）、`DSH_HOME`（默认 `~/.dsh`）的 profile 清单（与 `dsh plugin add` 同一 seam）、每个启用插件的 client bundle。
 2. **扫描** bundle 的字面量 `require("…")` 集合——**守卫感知**扫描器（花括号配对识别 `try{…}catch{…}`，跳过字符串/模板/注释/正则字面量）。这正是 dsh-insights.com 实测矩阵的同款代码，本地结论与线上生态数据同口径。
-3. **规则库**：R1 模块表缺失（含逐模块历史）、R2 `engines.dsh` 覆盖、R3 npm 新版、R4/R5 对照实测矩阵（已观测 2300+ 插件）、R6 profile 完整性——外加 [fixes.json 案例库](https://dsh-insights.com/data/fixes.json)的已知修法。案例库同时**随包内置快照**：断网机器上「迁移到 `@deepseek-ai/dsh-client-store`」「声明 `dsh.client.external`」这类具体修法不会消失，报告会标明这份修法来自线上还是包内快照。
+3. **规则库**：R1 模块表缺失（含逐模块历史）、R2 `engines.dsh` 覆盖、R3 npm 新版、R4/R5 对照实测矩阵（已观测 2300+ 插件）、R6 profile 完整性——外加 [fixes.json 案例库](https://dsh-insights.com/data/fixes.json)的已知修法。案例库同时**随包内置快照**：断网机器上「迁移到 `@deepseek-ai/dsh-client-store`」「声明 `dsh.client.external`」这类具体修法不会消失，报告会标明这份修法来自线上还是包内快照。修法与案例说明是中英双字段（`fix`/`fixEn`、`note`/`noteEn`），按 `--lang` 取用，缺英文时回落到中文原文而不是留空。
 4. **优雅降级**：`--offline`（或网络不可达）回退到包内 shell 历史快照 **+ 案例库快照** + 本地规则库；安装树读不到时，把自己的判定降级为「无法判定」警告，而不是编造崩溃。环境区永远写明这次用的是哪种图行模型（`shell graph rows: 9 immediate + 37 lazy` / `scan-only` / `UNREADABLE`）——模型本身就是结论的一部分。诊断工具自己永远不能崩，也永远不能比它的输入更自信。
 
 **隐私**：在线模式只发三类 GET 请求——dsh-insights.com 数据文件、npm registry 的 `latest` 元数据（仅限你已装的插件名）。你的机器信息永不上传，磁盘永不写入。

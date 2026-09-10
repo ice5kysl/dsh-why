@@ -9,14 +9,17 @@
     {
      "repo": "Fisfzy/dsh-ego-browser",
      "url": "https://github.com/Fisfzy/dsh-ego-browser/issues/32",
-     "note": "main/v0.8.1 已迁移到 dsh-client-store，只差 npm publish"
+     "note": "main/v0.8.1 已迁移到 dsh-client-store，只差 npm publish",
+     "noteEn": "main/v0.8.1 already migrated to dsh-client-store — only the npm publish is missing"
     },
     {
      "repo": "RevolutionLA/dsh-dream-skin",
      "url": "https://github.com/RevolutionLA/dsh-dream-skin/issues/47#issuecomment-5601034304",
-     "note": "store-first + try/catch 兜底写法，在 ≥0.1.2-alpha.2 上加载正常"
+     "note": "store-first + try/catch 兜底写法，在 ≥0.1.2-alpha.2 上加载正常",
+     "noteEn": "store-first + try/catch fallback; loads fine on >= 0.1.2-alpha.2"
     }
-   ]
+   ],
+   "fixEn": "Migrate to @deepseek-ai/dsh-client-store (in the module table since 0.1.2-alpha.2, exports the same-named createSnapshotStore/defineStore — usually a one-line swap); wrap in try/catch when older shells must keep working (note: falling back to dsh-client-runtime inside the catch is dead code — declaring engines.dsh >= 0.1.2-alpha.2 is cleaner)"
   },
   "@deepseek-ai/dsh-client-ui-attachment": {
    "status": "removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行：bundle 随 combo 批次注册工厂，require 通常仍可解析（非崩溃；时序无硬保证）",
@@ -25,19 +28,23 @@
     {
      "repo": "ysr666/dsh-vision-router",
      "url": "https://github.com/ysr666/dsh-vision-router/issues/447",
-     "note": "反面教材：我们曾把它判成「加载即崩」，作者用三个官方 tag 真实 host 复现正常（图行工厂可解析 + 其自带 tapIndex 前奏兜底），按误报收场。lazy 图行 require ≠ 崩溃"
+     "note": "反面教材：我们曾把它判成「加载即崩」，作者用三个官方 tag 真实 host 复现正常（图行工厂可解析 + 其自带 tapIndex 前奏兜底），按误报收场。lazy 图行 require ≠ 崩溃",
+     "noteEn": "Cautionary tale: we misjudged it as 'crashes on load' — the author reproduced a clean load on three official tags with a real host (resolvable via the graph-row factory, plus its own tapIndex prelude as backstop); closed as a false positive. A lazy graph-row require is NOT a crash"
     }
-   ]
+   ],
+   "fixEn": "Preferred: declare it in dsh.client.external (or inject) — the loader then arrives it before your plugin materializes, turning conditional into certain. To escape timing entirely: bundle it statically (0.0.1-rc.x is still on npm; keep react external to avoid duplicates). Auxiliary features can degrade via try/catch"
   },
   "@deepseek-ai/dsh-client-web-react": {
    "status": "removed-in 0.1.0-rc.8",
    "fix": "静态打包进自己的 bundle（react 必须保持 external）；或迁移到模块表内的 @deepseek-ai/dsh-client-ui-primitives",
-   "cases": []
+   "cases": [],
+   "fixEn": "Bundle it statically (react must stay external); or migrate to @deepseek-ai/dsh-client-ui-primitives, which is in the module table"
   },
   "@deepseek-ai/dsh-client-schema-form": {
    "status": "removed-in 0.1.0-rc.8",
    "fix": "静态打包进自己的 bundle；或改用原生表单/ui-primitives 重实现",
-   "cases": []
+   "cases": [],
+   "fixEn": "Bundle it statically; or re-implement with native forms / ui-primitives"
   }
  }
 }
