@@ -150,6 +150,17 @@ function faqJsonLd(faq) {
   return JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: main })
 }
 
+function moduleFaqJsonLd(name, fixText) {
+  return faqJsonLd([
+    { q: { en: `Why does require("${name}") break a dsh plugin?` }, a: { en: `dsh resolves require() only against the module table baked into each shell build, plus registered plugin factories — "${name}" is not in that table, so a plugin's client bundle cannot resolve it in the browser.` } },
+    { q: { en: 'How do I fix a plugin that requires it?' }, a: { en: fixText } },
+  ])
+}
+
+// the generic recipe for a package dsh never ships (long-tail modules)
+const GENERIC_FIX_EN = 'Bundle the dependency into the plugin (keeping react and @deepseek-ai/cordis external to avoid duplicates), or wrap the require in try/catch and degrade gracefully. The loader resolves require() at call time, so a paired catch turns the crash into a fallback.'
+const GENERIC_FIX_ZH = '把该依赖打进插件自身 bundle（react 和 @deepseek-ai/cordis 保持 external 避免双份），或给 require 加 try/catch 兜底降级。加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。'
+
 // Both languages live in the DOM; CSS ([data-lang]) shows one. This keeps the
 // bilingual copy visible to crawlers/LLMs and never swaps HTML into textContent.
 const t = (en, zh) => `<span class="en-only">${en}</span><span class="zh-only">${zh}</span>`
@@ -210,7 +221,7 @@ function modulePage(entry, baseName, seeds) {
   ${cta}
   `
   return shell({
-    title: `${baseName} — dsh module history & fix`, description: `Lifecycle of ${baseName} across dsh shells and the known fix when a plugin requires it.`, path: `m/${baseName}/`, jsonLd: '{}', body,
+    title: `${baseName} — dsh module history & fix`, description: `Lifecycle of ${baseName} across dsh shells and the known fix when a plugin requires it.`, path: `m/${baseName}/`, jsonLd: moduleFaqJsonLd(baseName, fixEn), body,
   })
 }
 
@@ -267,13 +278,13 @@ function genericModulePage(name, count, seeds) {
   ${secShared('Module history', '模块历史', timeline)}
   ${secShared('Ecosystem', '生态', eco)}
   ${sec('Why it breaks', '为什么崩', '<p>dsh resolves require() only against the module table baked into each shell build plus registered plugin factories — never against node_modules. Node builtins (stream / buffer / fs / util / events …) and most npm packages are therefore never resolvable from a plugin’s client bundle.</p>', '<p>dsh 的 require() 只对照烘焙进每个 shell 构建的模块表加已注册的插件工厂解析——从不查 node_modules。所以 Node 内置模块（stream / buffer / fs / util / events …）和大多数 npm 包在插件的 client bundle 里永远解析不了。</p>')}
-  ${sec('How to fix it', '怎么修', `<p>Bundle the dependency into the plugin (keeping react and @deepseek-ai/cordis external to avoid duplicates), or wrap the require in try/catch and degrade gracefully. The loader resolves require() at call time, so a paired catch turns the crash into a fallback.</p>${cta}`, `<p>把该依赖打进插件自身 bundle（react 和 @deepseek-ai/cordis 保持 external 避免双份），或给 require 加 try/catch 兜底降级。加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。</p>${cta}`)}
+  ${sec('How to fix it', '怎么修', `<p>${GENERIC_FIX_EN}</p>${cta}`, `<p>${GENERIC_FIX_ZH}</p>${cta}`)}
   ${sec('FAQ', '常见问题', `<div class="qa"><p class="q">Why does require("${esc(name)}") crash in dsh but not in Node?</p><p class="a">dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules. Node-only packages can never load there unless the plugin bundles them.</p></div>`, `<div class="qa"><p class="q">为什么 require("${esc(name)}") 在 dsh 里崩、在 Node 里不崩？</p><p class="a">dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。</p></div>`)}
   `
   return shell({
     title: `${name} — not in any dsh module table (${count} plugins hit it)`,
     description: `${count} plugins ecosystem-wide require ${name}, which dsh never ships in its module table. What it means and how to fix it.`,
-    path: `m/${name}/`, jsonLd: '{}', body,
+    path: `m/${name}/`, jsonLd: moduleFaqJsonLd(name, GENERIC_FIX_EN), body,
   })
 }
 

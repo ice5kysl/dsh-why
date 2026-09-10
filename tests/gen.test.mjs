@@ -97,6 +97,13 @@ describe('long-tail module pages (compat-observed)', () => {
     assert.match(html, /1 plugin\(s\) ecosystem-wide/)
   })
 
+  it('module pages carry FAQ JSON-LD too (GEO: Q&A a crawler can lift)', () => {
+    const html = readFileSync(join(out, 'm/stream/index.html'), 'utf8')
+    assert.match(html, /"@type":"FAQPage"/)
+    assert.match(html, /Why does require\(\\"stream\\"\) break a dsh plugin\?/)
+    assert.match(html, /How do I fix a plugin that requires it\?/)
+  })
+
   it('every long-tail page carries a ?e= deep link into the paste box', () => {
     const html = readFileSync(join(out, 'm/stream/index.html'), 'utf8')
     assert.match(html, /\?e=client-modules%3A%20require\(%22stream%22\)/)
