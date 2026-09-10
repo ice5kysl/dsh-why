@@ -121,6 +121,7 @@ function shell({ title, description, path, jsonLd, body }) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist/index.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist-mono/index.css">
 <link rel="stylesheet" href="/web/base.css">
+<script type="module" src="/web/analytics.mjs"></script>
 <script type="application/ld+json">${jsonLd}</script>
 </head>
 <body>
