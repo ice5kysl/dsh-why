@@ -12,7 +12,7 @@
  * @module dsh-why/web/analytics
  */
 
-const GA_ID = '' // ← paste the GA4 Measurement ID here, e.g. 'G-ABC123XYZ'
+const GA_ID = 'G-0L72MNJF9P' // GA4 Measurement ID
 
 if (GA_ID && typeof window !== 'undefined') {
   const s = document.createElement('script')
