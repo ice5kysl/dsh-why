@@ -264,3 +264,7 @@
 .ref ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .ref li a { color: var(--fg-2); font: 400 14px var(--mono); }
 .ref li a:hover { color: var(--accent); text-decoration: none; }
+
+/* ── bilingual blocks (CSS dual-language: both in the DOM, one shown) ────── */
+html[data-lang="zh"] .en-only { display: none !important; }
+html[data-lang="en"] .zh-only { display: none !important; }

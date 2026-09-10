@@ -33,11 +33,13 @@ describe('topic-page generator', () => {
     assert.match(html, /Failed to load plugins/)
   })
 
-  it('is bilingual — every prose block has a zh twin', () => {
+  it('is bilingual — every prose block has a zh twin (both in the DOM)', () => {
     const html = page('e/missed-the-module-table')
-    assert.match(html, /data-zh=/)
+    assert.match(html, /en-only/)
+    assert.match(html, /zh-only/)
     assert.match(html, /根因/) // the zh heading
     assert.match(html, /怎么修/)
+    assert.doesNotMatch(html, /data-zh=/) // CSS dual-language, not attribute swapping
   })
 
   it('emits a module page with the never-shipped timeline for the retired runtime', () => {

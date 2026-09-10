@@ -105,12 +105,12 @@ function moduleHistoryFor(baseName, seeds) {
 
 // ── page shell ──────────────────────────────────────────────────────────────
 function langToggleScript() {
-  return `<script>(function(){function l(){return new URLSearchParams(location.search).get('lang')||((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en')}function a(){var x=l();document.documentElement.dataset.lang=x;document.querySelectorAll('[data-en]').forEach(function(e){e.textContent=x==='en'?e.dataset.en:e.dataset.zh});var b=document.querySelectorAll('.langsel button');b.forEach(function(n){n.classList.toggle('on',n.dataset.l===x)})}a();document.querySelectorAll('.langsel button').forEach(function(n){n.addEventListener('click',function(){var u=new URL(location.href);u.searchParams.set('lang',n.dataset.l);location=u})})})();</script>`
+  return `<script>(function(){function l(){return new URLSearchParams(location.search).get('lang')||((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en')}function a(){var x=l();document.documentElement.dataset.lang=x;document.querySelectorAll('.langsel button').forEach(function(n){n.classList.toggle('on',n.dataset.l===x)})}a();document.querySelectorAll('.langsel button').forEach(function(n){n.addEventListener('click',function(){var u=new URL(location.href);u.searchParams.set('lang',n.dataset.l);location=u})})})();</script>`
 }
 
 function shell({ title, description, path, jsonLd, body }) {
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -135,7 +135,7 @@ ${body}
 </main>
 <footer>
   <div class="inner">
-    <p class="fnote" data-en="dsh-why — the “why did my dsh break” diagnostic." data-zh="dsh-why——「我的 dsh 为什么挂了」诊断。">dsh-why — the “why did my dsh break” diagnostic.</p>
+    <p class="fnote">${t('dsh-why — the “why did my dsh break” diagnostic.', 'dsh-why——「我的 dsh 为什么挂了」诊断。')}</p>
     <nav><a href="/">dsh-why</a><a href="https://github.com/ice5kysl/dsh-why">GitHub</a><a href="https://dsh-insights.com/">dsh-insights.com</a></nav>
   </div>
 </footer>
@@ -150,16 +150,19 @@ function faqJsonLd(faq) {
   return JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: main })
 }
 
-function section(title, bodyHtml) {
-  return `<section class="e-sec"><h2>${title}</h2>${bodyHtml}</section>`
+// Both languages live in the DOM; CSS ([data-lang]) shows one. This keeps the
+// bilingual copy visible to crawlers/LLMs and never swaps HTML into textContent.
+const t = (en, zh) => `<span class="en-only">${en}</span><span class="zh-only">${zh}</span>`
+const b = (enHtml, zhHtml) => `<div class="en-only">${enHtml}</div><div class="zh-only">${zhHtml}</div>`
+function sec(titleEn, titleZh, enHtml, zhHtml) {
+  return `<section class="e-sec"><h2>${t(esc(titleEn), esc(titleZh))}</h2>${b(enHtml, zhHtml)}</section>`
 }
-
-function bi(titleEn, titleZh, enHtml, zhHtml) {
-  return `<section class="e-sec"><h2 data-en="${esc(titleEn)}" data-zh="${esc(titleZh)}">${esc(titleEn)}</h2><div data-en="${esc(enHtml)}" data-zh="${esc(zhHtml)}">${enHtml}</div></section>`
+function secShared(titleEn, titleZh, bodyHtml) {
+  return `<section class="e-sec"><h2>${t(esc(titleEn), esc(titleZh))}</h2>${bodyHtml}</section>`
 }
 
 const deepLink = (sample) => `/?e=${encodeURIComponent(sample)}`
-const ctaFor = (sample) => `<div class="cta"><code>npx dsh-why</code> <a href="${deepLink(sample)}" data-en="diagnose this exact error in the browser" data-zh="在浏览器里直接诊断这条报错">diagnose this exact error in the browser</a></div>`
+const ctaFor = (sample) => `<div class="cta"><code>npx dsh-why</code> <a href="${deepLink(sample)}">${t('diagnose this exact error in the browser', '在浏览器里直接诊断这条报错')}</a></div>`
 
 // ── generators ──────────────────────────────────────────────────────────────
 function errorPage(p) {
@@ -167,13 +170,13 @@ function errorPage(p) {
   const body = `
   <header class="hero slim">
     <p class="kicker">DeepSeek Harness · failure diagnosis</p>
-    <h1 data-en="${esc(p.title)}" data-zh="${esc(p.title)}">${esc(p.title)}</h1>
+    <h1>${esc(p.title)}</h1>
     <p class="errstring"><code>${esc(p.exact)}</code></p>
-    <p class="lead" data-en="${esc(p.lead.en)}" data-zh="${esc(p.lead.zh)}">${esc(p.lead.en)}</p>
+    ${b(`<p class="lead">${esc(p.lead.en)}</p>`, `<p class="lead">${esc(p.lead.zh)}</p>`)}
   </header>
-  ${bi('Why it happens', '根因', `<p>${esc(p.cause.en)}</p>`, `<p>${esc(p.cause.zh)}</p>`)}
-  ${bi('How to fix it', '怎么修', `<p>${esc(p.fix.en)}</p>${cta}`, `<p>${esc(p.fix.zh)}</p>${cta}`)}
-  ${bi('FAQ', '常见问题', p.faq.map((f) => `<div class="qa"><p class="q" data-en="${esc(f.q.en)}" data-zh="${esc(f.q.zh)}">${esc(f.q.en)}</p><p class="a" data-en="${esc(f.a.en)}" data-zh="${esc(f.a.zh)}">${esc(f.a.en)}</p></div>`).join(''), p.faq.map((f) => `<div class="qa"><p class="q">${esc(f.q.zh)}</p><p class="a">${esc(f.a.zh)}</p></div>`).join(''))}
+  ${sec('Why it happens', '根因', `<p>${esc(p.cause.en)}</p>`, `<p>${esc(p.cause.zh)}</p>`)}
+  ${sec('How to fix it', '怎么修', `<p>${esc(p.fix.en)}</p>${cta}`, `<p>${esc(p.fix.zh)}</p>${cta}`)}
+  ${sec('FAQ', '常见问题', p.faq.map((f) => `<div class="qa"><p class="q">${esc(f.q.en)}</p><p class="a">${esc(f.a.en)}</p></div>`).join(''), p.faq.map((f) => `<div class="qa"><p class="q">${esc(f.q.zh)}</p><p class="a">${esc(f.a.zh)}</p></div>`).join(''))}
   `
   return shell({
     title: p.title, description: p.description, path: `e/${p.slug}/`, jsonLd: faqJsonLd(p.faq), body,
@@ -186,22 +189,24 @@ function modulePage(entry, baseName, seeds) {
   const fix = entry.fix ?? ''
   const fixEn = entry.fixEn ?? fix
   const cases = entry.cases ?? []
-  let timelineHtml = ''
-  if (h.kind === 'never') timelineHtml = `<div class="timeline"><code class="spec">${esc(baseName)}</code><div class="track t-never"></div><span class="tlabel" data-en="never shipped in any shell module table" data-zh="从未进入任何 shell 模块表">never shipped in any shell module table</span></div>`
-  else timelineHtml = `<div class="timeline"><code class="spec">${esc(baseName)}</code><div class="track t-present"></div><span class="tlabel" data-en="present since ${esc(h.since)}" data-zh="自 ${esc(h.since)} 起">present since ${esc(h.since)}</span></div>`
+  const track = h.kind === 'never' ? 't-never' : 't-present'
+  const label = h.kind === 'never'
+    ? t('never shipped in any shell module table', '从未进入任何 shell 模块表')
+    : t(`present since ${h.since}`, `自 ${h.since} 起`)
+  const timelineHtml = `<div class="timeline"><code class="spec">${esc(baseName)}</code><div class="track ${track}"></div><span class="tlabel">${label}</span></div>`
 
-  const caseHtml = cases.map((c) => `<div class="kf-case"><span class="kf-repo">${esc(c.repo)}</span>${c.note ? `<span class="kf-note" data-en=" — ${esc(c.noteEn ?? c.note)}" data-zh=" —— ${esc(c.note)}"> — ${esc(c.note)}</span>` : ''}${c.url ? `<a class="kf-url" href="${esc(c.url)}" rel="noopener" target="_blank">${esc(c.url)}</a>` : ''}</div>`).join('')
+  const caseHtml = cases.map((c) => `<div class="kf-case"><span class="kf-repo">${esc(c.repo)}</span>${c.note ? `<span class="kf-note">${t(` — ${esc(c.noteEn ?? c.note)}`, ` —— ${esc(c.note)}`)}</span>` : ''}${c.url ? `<a class="kf-url" href="${esc(c.url)}" rel="noopener" target="_blank">${esc(c.url)}</a>` : ''}</div>`).join('')
 
   const cta = ctaFor(`client-modules: require("${baseName}") missed the module table`)
   const body = `
   <header class="hero slim">
     <p class="kicker">DeepSeek Harness · module reference</p>
     <h1><code>${esc(baseName)}</code></h1>
-    <p class="lead" data-en="Lifecycle of this module across published shells, and the known fix when a plugin requires it." data-zh="该模块在各已发布 shell 上的生命周期，以及插件 require 它时的已知修法。">Lifecycle of this module across published shells.</p>
+    ${b('<p class="lead">Lifecycle of this module across published shells, and the known fix when a plugin requires it.</p>', '<p class="lead">该模块在各已发布 shell 上的生命周期，以及插件 require 它时的已知修法。</p>')}
   </header>
-  ${section('Module history', timelineHtml)}
-  ${section('Status', `<p class="mstatus">${esc(status)}</p>`)}
-  <section class="e-sec"><h2 data-en="Known fix" data-zh="已知修法">Known fix</h2><div class="knownfix"><div class="kf-fix" data-en="${esc(fixEn)}" data-zh="${esc(fix)}">${esc(fixEn)}</div>${caseHtml}</div></section>
+  ${secShared('Module history', '模块历史', timelineHtml)}
+  ${secShared('Status', '状态', `<p class="mstatus">${esc(status)}</p>`)}
+  <section class="e-sec"><h2>${t('Known fix', '已知修法')}</h2><div class="knownfix">${b(`<div class="kf-fix">${esc(fixEn)}</div>`, `<div class="kf-fix">${esc(fix)}</div>`)}${caseHtml}</div></section>
   ${cta}
   `
   return shell({
@@ -246,22 +251,24 @@ function topMissingModules(observed, seeds, fixes, limit = 24) {
 /** A module the case base does not cover: generic "bundle it or guard it" recipe. */
 function genericModulePage(name, count, seeds) {
   const h = moduleHistoryFor(name, seeds)
-  const timeline = h.kind === 'never'
-    ? `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track t-never"></div><span class="tlabel" data-en="never shipped in any shell module table" data-zh="从未进入任何 shell 模块表">never shipped in any shell module table</span></div>`
-    : `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track t-present"></div><span class="tlabel" data-en="present since ${esc(h.since)}" data-zh="自 ${esc(h.since)} 起">present since ${esc(h.since)}</span></div>`
-  const eco = `<div class="ecosystem" data-en="${count} plugin(s) ecosystem-wide hit the same module" data-zh="全生态 ${count} 个插件踩了同一个模块">${count} plugin(s) ecosystem-wide hit the same module</div>`
+  const track = h.kind === 'never' ? 't-never' : 't-present'
+  const label = h.kind === 'never'
+    ? t('never shipped in any shell module table', '从未进入任何 shell 模块表')
+    : t(`present since ${h.since}`, `自 ${h.since} 起`)
+  const timeline = `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track ${track}"></div><span class="tlabel">${label}</span></div>`
+  const eco = `<div class="ecosystem">${t(`${count} plugin(s) ecosystem-wide hit the same module`, `全生态 ${count} 个插件踩了同一个模块`)}</div>`
   const cta = ctaFor(`client-modules: require("${name}") missed the module table`)
   const body = `
   <header class="hero slim">
     <p class="kicker">DeepSeek Harness · module reference</p>
     <h1><code>${esc(name)}</code></h1>
-    <p class="lead" data-en="A package plugins require but dsh never ships in its module table — the browser half cannot resolve it." data-zh="插件会 require、但 dsh 从未放进模块表的包——浏览器端无法解析它。">A package plugins require but dsh never ships.</p>
+    ${b('<p class="lead">A package plugins require but dsh never ships in its module table — the browser half cannot resolve it.</p>', '<p class="lead">插件会 require、但 dsh 从未放进模块表的包——浏览器端无法解析它。</p>')}
   </header>
-  ${section('Module history', timeline)}
-  ${section('Ecosystem', eco)}
-  ${bi('Why it breaks', '为什么崩', `<p data-en="dsh resolves require() only against the module table baked into each shell build plus registered plugin factories — never against node_modules. Node builtins (stream / buffer / fs / util / events …) and most npm packages are therefore never resolvable from a plugin’s client bundle." data-zh="dsh 的 require() 只对照烘焙进每个 shell 构建的模块表加已注册的插件工厂解析——从不查 node_modules。所以 Node 内置模块（stream / buffer / fs / util / events …）和大多数 npm 包在插件的 client bundle 里永远解析不了。">dsh resolves require() only against the shell module table, never node_modules.</p>`, `<p data-en="dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。" data-zh="dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。">dsh 的 require() 只对照 shell 模块表解析，从不查 node_modules。</p>`)}
-  ${bi('How to fix it', '怎么修', `<p data-en="Bundle the dependency into the plugin (keeping react and @deepseek-ai/cordis external to avoid duplicates), or wrap the require in try/catch and degrade gracefully. The loader resolves require() at call time, so a paired catch turns the crash into a fallback." data-zh="把该依赖打进插件自身 bundle（react 和 @deepseek-ai/cordis 保持 external 避免双份），或给 require 加 try/catch 兜底降级。加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。">Bundle it, or guard it with try/catch.</p>${cta}`, `<p data-en="Bundle it, or guard it with try/catch." data-zh="打包进插件，或加 try/catch 兜底。">打包进插件，或加 try/catch 兜底。</p>${cta}`)}
-  ${bi('FAQ', '常见问题', `<div class="qa"><p class="q" data-en="Why does require(&quot;${esc(name)}&quot;) crash in dsh but not in Node?" data-zh="为什么 require(&quot;${esc(name)}&quot;) 在 dsh 里崩、在 Node 里不崩？">Why does require("${esc(name)}") crash in dsh but not in Node?</p><p class="a" data-en="dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules. Node-only packages can never load there unless the plugin bundles them." data-zh="dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。">dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules.</p></div>`, `<div class="qa"><p class="q">为什么 require("${esc(name)}") 在 dsh 里崩、在 Node 里不崩？</p><p class="a">dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。</p></div>`)}
+  ${secShared('Module history', '模块历史', timeline)}
+  ${secShared('Ecosystem', '生态', eco)}
+  ${sec('Why it breaks', '为什么崩', '<p>dsh resolves require() only against the module table baked into each shell build plus registered plugin factories — never against node_modules. Node builtins (stream / buffer / fs / util / events …) and most npm packages are therefore never resolvable from a plugin’s client bundle.</p>', '<p>dsh 的 require() 只对照烘焙进每个 shell 构建的模块表加已注册的插件工厂解析——从不查 node_modules。所以 Node 内置模块（stream / buffer / fs / util / events …）和大多数 npm 包在插件的 client bundle 里永远解析不了。</p>')}
+  ${sec('How to fix it', '怎么修', `<p>Bundle the dependency into the plugin (keeping react and @deepseek-ai/cordis external to avoid duplicates), or wrap the require in try/catch and degrade gracefully. The loader resolves require() at call time, so a paired catch turns the crash into a fallback.</p>${cta}`, `<p>把该依赖打进插件自身 bundle（react 和 @deepseek-ai/cordis 保持 external 避免双份），或给 require 加 try/catch 兜底降级。加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。</p>${cta}`)}
+  ${sec('FAQ', '常见问题', `<div class="qa"><p class="q">Why does require("${esc(name)}") crash in dsh but not in Node?</p><p class="a">dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules. Node-only packages can never load there unless the plugin bundles them.</p></div>`, `<div class="qa"><p class="q">为什么 require("${esc(name)}") 在 dsh 里崩、在 Node 里不崩？</p><p class="a">dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。</p></div>`)}
   `
   return shell({
     title: `${name} — not in any dsh module table (${count} plugins hit it)`,
