@@ -112,6 +112,7 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--json` | machine-readable report (findings carry structured fields; includes `issueTemplate`) |
 | `--offline` | zero network — bundled shell-history snapshot + local rules |
 | `--profile <name>` | which profile to diagnose (default: `web`, or the only one present) |
+| `--package <dir>` | plugin-author self-check: diagnose one plugin directory's client bundle (a pre-publish gate) |
 | `--error [text]` | parse a pasted error text instead of scanning the profile (reads stdin when the value is omitted; piped stdin is auto-detected) |
 | `--prompt` | append a paste-ready fix prompt for an AI coding agent |
 | `--dsh-home <path>` | override `DSH_HOME` (env `DSH_HOME` is honored too) |
@@ -126,7 +127,7 @@ Environment overrides for unusual setups: `DSH_WHY_NPM_ROOT` (where the global n
 
 - Guard optional host modules: `try { require("@deepseek-ai/dsh-client-store") } catch { /* fallback */ }` — the loader resolves `require()` at call time, so a paired catch turns a crash into a graceful degradation. dsh-why reports guarded misses as notes, never as crashes.
 - Declare `engines.dsh` in package.json and keep it honest.
-- Pre-publish gate in CI: `npx dsh-why --json` (exit 1 when something would crash). PRs welcome for a `--package <dir>` self-check mode.
+- Pre-publish gate in CI: `npx dsh-why --package . --json` — diagnoses the plugin directory's client bundle against the current shell's module table and exits 1 when a require would crash the loader. `npx dsh-why --package .` for a human-readable report.
 
 ## Related
 

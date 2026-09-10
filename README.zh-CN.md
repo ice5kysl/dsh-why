@@ -126,7 +126,7 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 
 - 可选宿主模块请加守卫：`try { require("@deepseek-ai/dsh-client-store") } catch { /* 兜底 */ }`——加载器是调用时解析 require 的，配对的 catch 能把崩溃变成优雅降级。dsh-why 对被守卫的缺失只记备注，不算崩溃。
 - 在 package.json 里声明 `engines.dsh` 并保持诚实。
-- CI 发布前自检：`npx dsh-why --json`（有崩溃级问题时退出码为 1）。`--package <dir>` 自检模式欢迎 PR。
+- CI 发布前自检：`npx dsh-why --package . --json` —— 针对插件目录的 client bundle 对照当前 shell 模块表自检，require 会导致崩溃时退出码为 1。`npx dsh-why --package .` 输出人类可读报告。
 
 ## 相关
 

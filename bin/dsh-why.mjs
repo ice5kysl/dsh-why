@@ -30,6 +30,7 @@ function usage(lang) {
   --json              机器可读输出（CI / 喂给 LLM）
   --offline           不联网，仅用包内规则库
   --profile <name>    诊断指定 profile（默认 web，或唯一的那个）
+  --package <dir>     插件作者自检：诊断一个插件目录（发版前门禁）
   --dsh-home <path>   覆盖 DSH_HOME（默认 ~/.dsh）
   --error [文本]      解析粘贴的报错文本（缺省读 stdin，管道输入自动识别）
   --prompt            末尾附可粘给 AI agent 的修复 prompt
@@ -47,6 +48,7 @@ Options:
   --json              machine-readable report (CI / feed to an LLM)
   --offline           no network — bundled local rule base only
   --profile <name>    diagnose a specific profile (default: web, or the only one)
+  --package <dir>     plugin-author self-check: diagnose one plugin directory
   --dsh-home <path>   override DSH_HOME (default: ~/.dsh)
   --error [text]      parse a pasted error text (reads stdin when omitted; pipes auto-detected)
   --prompt            append a paste-ready fix prompt for an AI agent
@@ -59,7 +61,7 @@ Read-only by design: never modifies any file. Exit codes: 0 = no crash-level fin
 }
 
 function parseArgs(argv) {
-  const opts = { json: false, offline: false, noColor: false, prompt: false, lang: null, profile: null, dshHome: null, error: null, help: false, version: false }
+  const opts = { json: false, offline: false, noColor: false, prompt: false, lang: null, profile: null, packageDir: null, dshHome: null, error: null, help: false, version: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--json') opts.json = true
@@ -72,6 +74,8 @@ function parseArgs(argv) {
     else if (arg.startsWith('--lang=')) opts.lang = arg.slice('--lang='.length)
     else if (arg === '--profile') opts.profile = argv[++i]
     else if (arg.startsWith('--profile=')) opts.profile = arg.slice('--profile='.length)
+    else if (arg === '--package') opts.packageDir = argv[++i]
+    else if (arg.startsWith('--package=')) opts.packageDir = arg.slice('--package='.length)
     else if (arg === '--dsh-home') opts.dshHome = argv[++i]
     else if (arg.startsWith('--dsh-home=')) opts.dshHome = arg.slice('--dsh-home='.length)
     else if (arg === '--error') {
@@ -157,6 +161,7 @@ async function main() {
     env: process.env,
     dshHome: opts.dshHome,
     profile: opts.profile,
+    packageDir: opts.packageDir,
     offline: opts.offline,
     errorText,
   })
