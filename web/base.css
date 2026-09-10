@@ -76,8 +76,15 @@
     backdrop-filter: saturate(1.2) blur(10px);
     box-shadow: var(--ring);
   }
-  .wordmark { font: 600 18px var(--mono); color: var(--fg); display: flex; align-items: center; gap: 7px; letter-spacing: -0.02em; }
-  .wordmark .caret { color: var(--accent); font-size: 1.15em; font-weight: 600; }
+  .wordmark { font: 600 19px var(--mono); color: var(--fg); display: inline-flex; align-items: center; gap: 10px; letter-spacing: -0.02em; }
+  .wordmark .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent); font-size: 16px; font-weight: 600; line-height: 1;
+  }
+  .wordmark:hover { text-decoration: none; }
+  .wordmark:hover .mark { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .nav-right { display: flex; align-items: center; gap: 4px; }
   .nav a, .nav button { color: var(--fg-3); font: 500 14px var(--sans); }
   .seg { display: flex; border-radius: 8px; box-shadow: var(--ring); overflow: hidden; }

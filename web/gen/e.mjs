@@ -126,7 +126,7 @@ function shell({ title, description, path, jsonLd, body }) {
 </head>
 <body>
 <header class="nav">
-  <a class="wordmark" href="/"><span class="caret">❯</span> dsh-why</a>
+  <a class="wordmark" href="/"><span class="mark">❯</span>dsh-why</a>
   <div class="nav-right">
     <div class="seg langsel"><button data-l="en">EN</button><button data-l="zh">中文</button></div>
   </div>
