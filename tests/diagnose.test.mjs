@@ -10,7 +10,7 @@ import { afterEach, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { runDiagnosis } from '../lib/diagnose.mjs'
-import { buildFixPrompt } from '../lib/report.mjs'
+import { buildFixPrompt, renderText } from '../lib/report.mjs'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures')
 
@@ -49,7 +49,11 @@ describe('runDiagnosis', () => {
     assert.equal(report.summary.errors, 1)
     assert.equal(report.degraded, false)
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
-    assert.equal(r1.knownFixes, undefined) // fixes.json is an online-only source
+    // offline → the bundled case-base snapshot fills in, and says so
+    assert.equal(report.fixes.origin, 'bundled')
+    assert.ok(r1.knownFixes['@deepseek-ai/dsh-client-runtime/client'].fix.includes('dsh-client-store'))
+    assert.equal(r1.knownFixesOrigin, 'bundled')
+    assert.match(renderText(report, 'en', '9.9.9', { color: false }), /BUNDLED case-base snapshot/)
     // the row model ran (mounted set read from the install), so the crash is a crash
     assert.deepEqual(report.rows, {
       exact: true,
@@ -139,12 +143,15 @@ describe('runDiagnosis', () => {
     assert.equal(report.mode, 'online')
     assert.equal(report.degraded, false)
     assert.equal(report.seed.origin, 'upstream')
+    assert.equal(report.fixes.origin, 'upstream')
+    assert.equal(report.fixes.modules, 1)
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
     assert.equal(r1.observed.verdict, 'never')
     assert.equal(r1.upgradeAvailable, true) // R3's 1.1.0 > 1.0.0 folded into the R1 fix hints
     assert.ok(report.findings.some((f) => f.rule === 'R5' && f.plugin === 'fake-guarded-plugin'))
     // fixes.json hit → known-fix block on the R1 finding
     assert.equal(r1.knownFixes['@deepseek-ai/dsh-client-runtime/client'].cases[0].repo, 'Fisfzy/dsh-ego-browser')
+    assert.equal(r1.knownFixesOrigin, 'upstream')
   })
 
   it('unreachable upstreams degrade to the bundled rule base, never to a crash', async () => {

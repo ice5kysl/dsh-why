@@ -134,6 +134,14 @@ describe('dsh-why CLI', () => {
     assert.match(stdout, /1 conditional require\(s\)/)
   })
 
+  it('offline conditional finding still shows the bundled case-base recipe', () => {
+    const { status, stdout } = runCli(['--offline', '--profile', 'rows'])
+    assert.equal(status, 0)
+    assert.match(stdout, /Known fix \(from the BUNDLED case-base snapshot/)
+    assert.match(stdout, /dsh\.client\.external/)
+    assert.doesNotMatch(stdout, /Issue template/) // still not a public-issue trigger
+  })
+
   it('graph rows unreadable → unclassified warnings, exit 0, and a loud caveat', () => {
     const { status, stdout } = runCli(['--offline', '--profile', 'web'], {
       DSH_WHY_NPM_ROOT: join(FIXTURES, 'npm-global-partial'),

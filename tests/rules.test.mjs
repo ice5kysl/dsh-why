@@ -29,6 +29,24 @@ const INSTALL = {
 /** The fixture install's client graph rows — the same input the CLI collects. */
 const ROWS = collectShellRows(join(FIXTURES, 'npm-global'))
 
+/**
+ * The real case-base entry (dsh-insights 7f9336f) for the lazy graph row the
+ * vision-router class requires: the recipe's first option is the very fix the
+ * conditional finding recommends.
+ */
+const FIXES_FOR_ROWS = {
+  generatedAt: '2026-09-10T00:00:00.000Z',
+  modules: {
+    '@deepseek-ai/dsh-client-ui-attachment': {
+      status: 'removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行：require 通常仍可解析（非崩溃）',
+      fix: '首选：在 dsh.client.external（或 inject）里声明它——条件可解析变确定；要彻底摆脱时序：静态打包进自己的 bundle',
+      cases: [
+        { repo: 'ysr666/dsh-vision-router', url: 'https://github.com/ysr666/dsh-vision-router/issues/447', note: '反面教材：我们曾把它判成「加载即崩」，作者实机复现正常' },
+      ],
+    },
+  },
+}
+
 function runFixture(profileName, extra = {}) {
   const profileData = readProfile(profileName, join(FIXTURES, 'dsh-home', 'profiles', profileName))
   assert.equal(profileData.manifestFound, true)
@@ -210,6 +228,13 @@ describe('fixes.json case base (event-level repair guidance)', () => {
           { repo: 'RevolutionLA/dsh-dream-skin', url: 'https://github.com/RevolutionLA/dsh-dream-skin/issues/47', note: 'store-first + try/catch 兜底' },
         ],
       },
+      '@deepseek-ai/dsh-client-ui-attachment': {
+        status: 'removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行，通常仍可解析',
+        fix: '首选：在 dsh.client.external（或 inject）里声明它；要彻底摆脱时序：静态打包进自己的 bundle',
+        cases: [
+          { repo: 'ysr666/dsh-vision-router', url: 'https://github.com/ysr666/dsh-vision-router/issues/447', note: '反面教材：我们曾把它判成加载即崩' },
+        ],
+      },
     },
   }
 
@@ -314,6 +339,31 @@ describe('diagnose · graph rows (the vision-router class)', () => {
   it('a plugin that DECLARES the lazy row is silent', () => {
     assert.equal(byName(report)['fake-row-declared-plugin'].status, 'ok')
     assert.equal(report.findings.filter((f) => f.plugin === 'fake-row-declared-plugin').length, 0)
+  })
+
+  it('the conditional finding carries the case-base recipe (declare dsh.client.external)', () => {
+    const report = runFixture('rows', { fixes: FIXES_FOR_ROWS })
+    const [finding] = findingsFor(report, 'R1')
+    assert.equal(finding.reason, 'undeclared-lazy-row')
+    const kf = finding.knownFixes?.['@deepseek-ai/dsh-client-ui-attachment']
+    assert.ok(kf, 'the lazy-row module must hit the case base')
+    assert.match(kf.fix, /dsh\.client\.external/)
+    assert.equal(kf.cases[0].repo, 'ysr666/dsh-vision-router')
+    // bundled provenance is rendered, so a stale snapshot is never mistaken for live advice
+    const text = renderText(report, 'en', '9.9.9', { color: false })
+    assert.match(text, /Known fix \(from the ecosystem case base\):/)
+    assert.match(text, /dsh\.client\.external/)
+    // …and the offline snapshot is labelled as such
+    const bundled = runFixture('rows', { fixes: FIXES_FOR_ROWS, fixesOrigin: 'bundled' })
+    assert.match(renderText(bundled, 'en', '9.9.9', { color: false }), /BUNDLED case-base snapshot/)
+  })
+
+  it('the unclassifiable flavor stays advisory-only (no recipe on an unverified module)', () => {
+    const report = runFixture('rows', { rows: null, fixes: FIXES_FOR_ROWS })
+    const [finding] = findingsFor(report, 'R1')
+    assert.equal(finding.reason, 'row-model-unavailable')
+    assert.equal(finding.knownFixes, undefined)
+    assert.match(renderText(report, 'en', '9.9.9', { color: false }), /could not be classified/)
   })
 
   it('conditional findings never reach the issue template or the crash count', () => {

@@ -146,7 +146,10 @@ describe('runDiagnosis with errorText', () => {
     assert.equal(calls, 0)
     const r1 = report.findings.find((f) => f.rule === 'R1')
     assert.equal(r1.severity, 'error')
-    assert.equal(r1.knownFixes, undefined) // no fixes.json offline
+    // the case base now ships as a bundled snapshot: offline still gets the recipe
+    assert.equal(report.fixes.origin, 'bundled')
+    assert.ok(r1.knownFixes['@deepseek-ai/dsh-client-runtime/client'].fix.includes('dsh-client-store'))
+    assert.equal(r1.knownFixesOrigin, 'bundled')
     assert.equal(report.findings.filter((f) => f.rule === 'R4').length, 0)
   })
 
