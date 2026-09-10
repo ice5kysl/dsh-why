@@ -81,12 +81,22 @@ describe('dsh-why CLI', () => {
     assert.deepEqual(r1.missing, ['@deepseek-ai/dsh-client-runtime/client'])
     assert.match(report.issueTemplate, /fake-crash-plugin@1\.0\.0/)
     assert.match(report.issueTemplate, /missed the module table/)
+    // the issue we file for the user carries the tool's own short link
+    assert.match(report.issueTemplate, /https:\/\/dsh-why\.com/)
+    assert.doesNotMatch(report.issueTemplate, /github\.com\/ice5kysl\/dsh-why/)
   })
 
   it('clean fixture profile: exit 0 and a green summary', () => {
     const { status, stdout } = runCli(['--offline', '--profile', 'clean'])
     assert.equal(status, 0)
     assert.match(stdout, /All clear/)
+  })
+
+  it('the tip line points at the docs link', () => {
+    const { stdout } = runCli(['--offline', '--profile', 'clean'])
+    assert.match(stdout, /Docs: https:\/\/dsh-why\.com/)
+    const zh = runCli(['--offline', '--profile', 'clean', '--lang', 'zh'])
+    assert.match(zh.stdout, /文档：https:\/\/dsh-why\.com/)
   })
 
   it('--lang zh renders Chinese', () => {
