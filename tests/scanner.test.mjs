@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { compareVersions, extractRequiresV2, statusFor, stripClientSuffix } from '../lib/scanner.mjs'
+import { classify, compareVersions, extractRequiresV2, statusFor, stripClientSuffix } from '../lib/scanner.mjs'
 
 const SEED = new Set(['react', 'react/jsx-runtime', '@deepseek-ai/dsh-client-store'])
 const NO_KNOWN = new Set()
@@ -14,6 +14,8 @@ const NO_KNOWN = new Set()
 function guards(bundle) {
   return extractRequiresV2(bundle).requiresV2
 }
+
+const v2of = (bundle) => extractRequiresV2(bundle).requiresV2
 
 describe('extractRequiresV2', () => {
   it('extracts flat literal requires, deduped, in order', () => {
@@ -94,9 +96,8 @@ describe('extractRequiresV2', () => {
     assert.equal(bySpec['guarded-mod'].guard, 'in-try')
     assert.equal(bySpec['fallback-mod'].guard, 'in-catch')
     assert.equal(bySpec['bare-mod'].guard, 'unguarded')
-    // comment-decoy sits in a comment: the extractor regex does see it
-    // (upstream-consistent quirk) but it must NOT gain a guard context
-    assert.equal(bySpec['comment-decoy'].guard, 'unguarded')
+    // comment-decoy sits in a comment: code-state extraction never sees it
+    assert.equal(bySpec['comment-decoy'], undefined)
   })
 
   it('catch params with destructuring and defaults pair correctly', () => {
@@ -110,7 +111,7 @@ describe('extractRequiresV2', () => {
 })
 
 describe('statusFor (guard-aware verdicts)', () => {
-  const v2of = (bundle) => extractRequiresV2(bundle).requiresV2
+
 
   it('unguarded missing → broken', () => {
     const r = statusFor(v2of('require("react"); require("gone-mod")'), SEED, 'self', NO_KNOWN)
@@ -156,5 +157,80 @@ describe('compareVersions / stripClientSuffix', () => {
     assert.equal(stripClientSuffix('@scope/pkg/client/client'), '@scope/pkg/client')
     assert.equal(stripClientSuffix('react'), 'react')
     assert.equal(stripClientSuffix('some/clientish'), 'some/clientish')
+  })
+})
+
+// 2026-09-10 accuracy fixes (ecosystem review): code-state-only extraction,
+// relative-spec exclusion, and the graph-row resolution tier.
+describe('code-state extraction + local module tables', () => {
+  it('requires inside comments and strings are never extracted', () => {
+    const { requires, requiresV2 } = extractRequiresV2(`
+      // require("lodash") kept for reference
+      /* require("left-pad") */
+      var doc = "require(\\"dayjs\\")";
+      var tpl = \`see require("ns-\${x}") pattern\`;
+      require("react");
+    `)
+    assert.deepEqual(requires, ['react'])
+    assert.deepEqual(requiresV2.map((r) => r.spec), ['react'])
+  })
+
+  it('relative/absolute specifiers are excluded and counted as local (localRequire bundles)', () => {
+    // The dsh-safe-delete / dsh-web-mobile bundle shape: a local module table
+    // serves "./x.js" — such requires never reach the dsh loader.
+    const { requires, requiresV2, local } = extractRequiresV2(`
+      var modules = { './i18n.js': function (module, exports, require) {} };
+      function localRequire(name) { var l = modules[name]; if (l === undefined) return require(name); }
+      localRequire("./i18n.js");
+      require("./effects/phone-chrome.js");
+      require("/abs/path.js");
+      require("react");
+    `)
+    assert.deepEqual(requires, ['react'])
+    assert.deepEqual(requiresV2.map((r) => r.spec), ['react'])
+    assert.equal(local, 2) // ./effects + /abs（localRequire("./i18n.js") 走的是 localRequire，不计）
+  })
+})
+
+describe('graph-row classification (seed → factory branches)', () => {
+  const ROWS = {
+    immediate: new Set(['@deepseek-ai/dsh-client-connection']),
+    lazy: new Set(['@deepseek-ai/dsh-client-ui-attachment']),
+  }
+
+  it('immediate rows classify ok without any declaration', () => {
+    assert.equal(classify('@deepseek-ai/dsh-client-connection', SEED, 'self', NO_KNOWN, ROWS), 'ok')
+    assert.equal(classify('@deepseek-ai/dsh-client-connection/client', SEED, 'self', NO_KNOWN, ROWS), 'ok')
+  })
+
+  it('lazy rows are conditional unless declared in dsh.client external/inject', () => {
+    assert.equal(classify('@deepseek-ai/dsh-client-ui-attachment', SEED, 'self', NO_KNOWN, ROWS), 'conditional')
+    assert.equal(classify('@deepseek-ai/dsh-client-ui-attachment', SEED, 'self', NO_KNOWN, ROWS, new Set(['@deepseek-ai/dsh-client-ui-attachment'])), 'ok')
+  })
+
+  it('never-shipped modules classify missing', () => {
+    assert.equal(classify('@deepseek-ai/dsh-client-runtime/client', SEED, 'self', NO_KNOWN, ROWS), 'missing')
+  })
+
+  it('unguarded lazy-row require → conditional, not broken (the vision-router case)', () => {
+    const r = statusFor(v2of('const { ImageGallery } = require("@deepseek-ai/dsh-client-ui-attachment")'), SEED, 'self', NO_KNOWN, ROWS)
+    assert.equal(r.status, 'conditional')
+    assert.deepEqual(r.conditional, ['@deepseek-ai/dsh-client-ui-attachment'])
+  })
+
+  it('unguarded conditional flips back to ok once declared', () => {
+    const r = statusFor(v2of('require("@deepseek-ai/dsh-client-ui-attachment")'), SEED, 'self', NO_KNOWN, ROWS, new Set(['@deepseek-ai/dsh-client-ui-attachment']))
+    assert.equal(r.status, 'ok')
+  })
+
+  it('guarded conditional (try + empty catch) → ok', () => {
+    const r = statusFor(v2of('try { require("@deepseek-ai/dsh-client-ui-attachment") } catch (e) {}'), SEED, 'self', NO_KNOWN, ROWS)
+    assert.equal(r.status, 'ok')
+  })
+
+  it('try-missing with conditional catch → conditional (not broken)', () => {
+    const r = statusFor(v2of('try { require("gone-mod") } catch (e) { require("@deepseek-ai/dsh-client-ui-attachment") }'), SEED, 'self', NO_KNOWN, ROWS)
+    assert.equal(r.status, 'conditional')
+    assert.deepEqual(r.conditional, ['gone-mod', '@deepseek-ai/dsh-client-ui-attachment'])
   })
 })
