@@ -22,6 +22,10 @@ python3 -m http.server 8080
 
 Shareable prefill: `/?e=<url-encoded error>&v=0.1.2-rc.1&lang=zh`.
 
+## Keeping the web version in sync
+
+The page reports the tool version in its report footer (`web/app.mjs`'s `toolVersion`); bump it alongside `package.json` on each release.
+
 ## Deployment
 
 GitHub Actions builds a clean artifact (`.github/workflows/pages.yml`) — `index.html`, `web/`, `lib/`, `llms.txt`, `robots.txt`, `sitemap.xml` — and deploys it to Pages. Set **Settings → Pages → Source: GitHub Actions**, and **Custom domain: dsh-why.com** (then Enforce HTTPS). Before the domain resolves, the site previews at `https://ice5kysl.github.io/dsh-why/`.

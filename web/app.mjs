@@ -150,7 +150,7 @@ async function run() {
       fixes: data.fixes,
       fixesOrigin: data.fixesOrigin,
       observed: data.observed,
-      toolVersion: '0.1.5',
+      toolVersion: '0.1.6',
     })
     if (result.kind === 'report') renderReport(result)
     else renderState(result.kind, result.text)
