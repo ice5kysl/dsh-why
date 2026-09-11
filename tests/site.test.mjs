@@ -203,3 +203,21 @@ describe('landing page structure', () => {
     assert.match(html, /id="ref-runs"/)
   })
 })
+
+describe('the run reference list survives a stale client script', () => {
+  it('keeps a static fallback that matches RUN_PAGES exactly', async () => {
+    const { RUN_PAGES } = await import('../web/gen/run-pages.mjs')
+    const html = readFileSync(join(ROOT, 'index.html'), 'utf8')
+    const block = /<ul id="ref-runs">([\s\S]*?)<\/ul>/.exec(html)?.[1] ?? ''
+    const hrefs = [...block.matchAll(/href="\/e\/([^/]+)\//g)].map((m) => m[1])
+    // Order-independent equality: the HTML may be reordered without breaking, but
+    // a page added to RUN_PAGES without a fallback line must fail here.
+    assert.deepEqual([...hrefs].sort(), RUN_PAGES.map((p) => p.slug).sort())
+  })
+
+  it('the fallback is not shadowed by the script (the script clears and refills it)', () => {
+    const app = readFileSync(join(ROOT, 'web', 'app.mjs'), 'utf8')
+    assert.match(app, /ul\.textContent = ''/)
+    assert.match(app, /'ref-runs'/)
+  })
+})

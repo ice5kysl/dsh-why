@@ -87,7 +87,20 @@
       </div>
       <div class="ref-group">
         <h3 data-en="Run failures — dsh-why run" data-zh="运行失败 —— dsh-why run">Run failures — dsh-why run</h3>
-        <ul id="ref-runs"></ul>
+        <!-- Static fallback, kept identical to RUN_PAGES by tests/site.test.mjs.
+             GitHub Pages caches web/app.mjs for 10 minutes, so a visitor can run a
+             stale script that never fills this list; leaving it empty made a
+             working feature look broken. A fresh script clears and re-renders it. -->
+        <ul id="ref-runs">
+          <li><a href="/e/provider-transport/"><code>provider-transport</code></a></li>
+          <li><a href="/e/provider-auth-401/"><code>provider-auth-401</code></a></li>
+          <li><a href="/e/provider-missing-credential/"><code>provider-missing-credential</code></a></li>
+          <li><a href="/e/provider-quota/"><code>provider-quota</code></a></li>
+          <li><a href="/e/provider-pricing/"><code>provider-pricing</code></a></li>
+          <li><a href="/e/model-unavailable/"><code>model-unavailable</code></a></li>
+          <li><a href="/e/provider-server/"><code>provider-server</code></a></li>
+          <li><a href="/e/provider-timeout/"><code>provider-timeout</code></a></li>
+        </ul>
       </div>
       <div class="ref-group">
         <h3 data-en="Modules" data-zh="模块">Modules</h3>
