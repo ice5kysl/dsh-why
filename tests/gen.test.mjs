@@ -204,3 +204,11 @@ describe('inventory does not shrink when live data is unavailable', () => {
     assert.equal(ref.modules.some((m) => m.slug === 'some-long-tail'), true)
   })
 })
+
+describe('the reported rule-base version has one source', () => {
+  it('ref-pages.json carries the package version, not a hand-kept literal', () => {
+    const ref = JSON.parse(readFileSync(join(out, 'web', 'ref-pages.json'), 'utf8'))
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    assert.equal(ref.toolVersion, pkg.version)
+  })
+})

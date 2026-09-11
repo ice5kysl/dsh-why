@@ -14,6 +14,11 @@ import { compareVersions } from '../lib/scanner.mjs'
 
 const $ = (id) => document.getElementById(id)
 
+// The rule-base version the browser tool reports. It must match the published
+// package, so the generator writes it into web/ref-pages.json from package.json
+// and this is only the fallback for the first paint / a failed fetch.
+let TOOL_VERSION = '0.2.0'
+
 // ── language ────────────────────────────────────────────────────────────────
 function detectLang() {
   const q = new URLSearchParams(location.search).get('lang')
@@ -102,7 +107,7 @@ function mountResult(result) {
 
   if (result.kind === 'report') {
     LAST_REPORT = result.report
-    const handle = mountReport(out, result.report, lang, '0.1.7')
+    const handle = mountReport(out, result.report, lang, TOOL_VERSION)
     out.querySelector('#copy-report')?.addEventListener('click', async () => {
       await copyText(handle.plainText())
       flashButton(out.querySelector('#copy-report'), w.copying)
@@ -170,7 +175,7 @@ async function run() {
       rows, rowsExact: true,
       fixes: data.fixes, fixesOrigin: data.fixesOrigin,
       observed: data.observed,
-      toolVersion: '0.1.7',
+      toolVersion: TOOL_VERSION,
     })
     mountResult(result)
   } catch (error) {
@@ -236,10 +241,13 @@ function boot() {
     try { $('input').value = decodeURIComponent(q.get('e')) } catch { $('input').value = q.get('e') }
   }
 
-  // the reference index is generated (it grows with the matrix and the rule set)
-  fetch('web/ref-pages.json')
+  // The reference index and the reported rule-base version are both generated.
+  // Awaiting it before the first render keeps the version honest even on a deep
+  // link (?e=…), where run() would otherwise fire with the fallback literal.
+  const reference = fetch('web/ref-pages.json')
     .then((r) => r.json())
-    .then(({ modules, runs }) => {
+    .then(({ modules, runs, toolVersion }) => {
+      if (toolVersion) TOOL_VERSION = toolVersion
       for (const [id, entries, href, label] of [
         ['ref-modules', modules, (m) => `/m/${m.slug}/`, (m) => m.slug],
         ['ref-runs', runs, (r) => `/e/${r.slug}/`, (r) => r.slug],
@@ -261,7 +269,8 @@ function boot() {
     })
     .catch(() => { /* the static error links remain; the generated groups fall back to the sitemap */ })
 
-  loadData()
+  reference
+    .then(() => loadData())
     .then((data) => {
       fillVersions(data.seeds)
       if ($('input').value.trim()) run()

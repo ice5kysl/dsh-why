@@ -453,9 +453,12 @@ ${modLines}
 - \`npx dsh-why run --json\` — machine-readable run report
 `)
 
-  // the landing page's reference list (module group renders from this)
+  // the landing page's reference list (module group renders from this), plus the
+  // rule-base version so the browser report cannot disagree with the package
   mkdirSync(join(outRoot, 'web'), { recursive: true })
+  const toolVersion = JSON.parse(read('package.json')).version
   writeFileSync(join(outRoot, 'web', 'ref-pages.json'), JSON.stringify({
+    toolVersion,
     modules: moduleIndex,
     runs: RUN_PAGES.map((p) => ({ slug: p.slug, exact: p.exact })),
   }))
