@@ -121,6 +121,9 @@
   }
   .cmd .copy { color: var(--accent); cursor: pointer; border: 0; background: none; font: 500 13px var(--sans); }
   .cmd .hint { color: var(--fg-4); }
+  .cmds { display: flex; flex-wrap: wrap; gap: 10px; }
+  a.cmd { text-decoration: none; }
+  a.cmd:hover .mono { color: var(--accent); }
 
   .tool { margin: 8px 0 24px; padding: 20px; border-radius: 12px; box-shadow: var(--card); background: var(--bg); }
   .tool label { display: block; margin: 0 0 8px; font: 500 15px var(--sans); color: var(--fg); }

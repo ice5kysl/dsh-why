@@ -205,7 +205,7 @@ function errorPage(p) {
  * pretending a URL can do the work.
  */
 function runPage(p) {
-  const cta = `<div class="cta"><code>npx dsh-why run</code> <a href="${ORIGIN}/#run">${t('what else it can tell you', '它还能告诉你什么')}</a></div>`
+  const cta = `<div class="cta"><code>npx dsh-why run</code> <a href="${ORIGIN}/#run-failures">${t('see every run failure this can name', '看它能定性的全部运行期失败')}</a></div>`
   const steps = (items) => `<ol class="runfix">${items.map((item) => `<li>${esc(item)}</li>`).join('')}</ol>`
   const qa = (lang) => p.faq
     .map((f) => `<div class="qa"><p class="q">${esc(f.q[lang])}</p><p class="a">${esc(f.a[lang])}</p></div>`)

@@ -180,3 +180,26 @@ describe('shared title / fix steps / timeline (web ↔ CLI, one source of truth)
     assert.deepEqual(moduleTimeline(undefined), { kind: 'unknown' })
   })
 })
+
+describe('landing page structure', () => {
+  const html = readFileSync(join(ROOT, 'index.html'), 'utf8')
+
+  it('has no duplicate element ids (a collision silently rebinds getElementById)', () => {
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
+    const duplicates = ids.filter((id, i) => ids.indexOf(id) !== i)
+    assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s): ${[...new Set(duplicates)].join(', ')}`)
+  })
+
+  it('every in-page anchor has a target to land on', () => {
+    const anchors = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1])
+    const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))
+    for (const anchor of anchors) assert.equal(ids.has(anchor), true, `#${anchor} has no target`)
+  })
+
+  it('advertises both jobs on the hero, not just the startup check', () => {
+    // the run command and its reference group must be reachable without scrolling far
+    assert.match(html, /npx dsh-why run/)
+    assert.match(html, /href="#run-failures"/)
+    assert.match(html, /id="ref-runs"/)
+  })
+})

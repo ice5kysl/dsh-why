@@ -34,10 +34,16 @@
          data-zh="每一次崩溃，都值得一个诚实的解释。粘贴红屏报错，得到缺失的模块、它的版本历史、和修法——你粘贴的内容绝不离开浏览器。">Every crash deserves an honest explanation.</p>
       <p class="trust" data-en="zero dependencies · read-only · nothing uploaded"
          data-zh="零依赖 · 只读 · 不上传">zero dependencies · read-only · nothing uploaded</p>
-      <div class="cmd">
-        <span class="mono">npx dsh-why</span>
-        <span class="hint" data-en="reads your actual install" data-zh="读取你的真实安装">reads your actual install</span>
-        <button class="copy" id="copy-cmd" data-en="copy" data-zh="复制">copy</button>
+      <div class="cmds">
+        <div class="cmd">
+          <span class="mono">npx dsh-why</span>
+          <span class="hint" data-en="reads your actual install" data-zh="读取你的真实安装">reads your actual install</span>
+          <button class="copy" id="copy-cmd" data-en="copy" data-zh="复制">copy</button>
+        </div>
+        <a class="cmd cmd-run" href="#run-failures">
+          <span class="mono">npx dsh-why run</span>
+          <span class="hint" data-en="dsh booted, but a run died" data-zh="dsh 起来了，但某次 run 挂了">dsh booted, but a run died</span>
+        </a>
       </div>
     </section>
 
@@ -68,7 +74,7 @@
     <p class="privacy" data-en="Diagnosed entirely in your browser. Data (module tables, known fixes, compat matrix) is fetched from dsh-insights.com."
        data-zh="全程在你的浏览器里诊断。数据（模块表、已知修法、兼容矩阵）取自 dsh-insights.com。"></p>
 
-    <section class="ref" id="run" aria-label="reference">
+    <section class="ref" id="run-failures" aria-label="reference">
       <h2 data-en="Error reference" data-zh="错误参考">Error reference</h2>
       <div class="ref-group">
         <h3 data-en="Loader errors" data-zh="加载器报错">Loader errors</h3>
