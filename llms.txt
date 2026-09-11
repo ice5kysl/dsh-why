@@ -10,6 +10,7 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your i
 
 ## Pages
 - https://dsh-why.com/ — paste an error, get the diagnosis
+- https://dsh-why.com/guide/ — what dsh-why is, which command when, and the exit codes
 - https://github.com/ice5kysl/dsh-why — source
 - https://www.npmjs.com/package/dsh-why — the CLI package
 
@@ -34,19 +35,19 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your i
 - https://dsh-why.com/m/dsh-client-ui-attachment/ — @deepseek-ai/dsh-client-ui-attachment (removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行：bundle 随 combo 批次注册工厂，require 通常仍可解析（非崩溃；时序无硬保证）)
 - https://dsh-why.com/m/dsh-client-web-react/ — @deepseek-ai/dsh-client-web-react (removed-in 0.1.0-rc.8)
 - https://dsh-why.com/m/dsh-client-schema-form/ — @deepseek-ai/dsh-client-schema-form (removed-in 0.1.0-rc.8)
-- https://dsh-why.com/m/assert/ — assert (carried over from a previous live build)
-- https://dsh-why.com/m/buffer/ — buffer (carried over from a previous live build)
-- https://dsh-why.com/m/domino/ — domino (carried over from a previous live build)
-- https://dsh-why.com/m/dsh-mcp-manager/ — dsh-mcp-manager (carried over from a previous live build)
-- https://dsh-why.com/m/esm-env/ — esm-env (carried over from a previous live build)
-- https://dsh-why.com/m/events/ — events (carried over from a previous live build)
-- https://dsh-why.com/m/fs/ — fs (carried over from a previous live build)
-- https://dsh-why.com/m/path/ — path (carried over from a previous live build)
-- https://dsh-why.com/m/process/ — process (carried over from a previous live build)
-- https://dsh-why.com/m/stream/ — stream (carried over from a previous live build)
-- https://dsh-why.com/m/url/ — url (carried over from a previous live build)
-- https://dsh-why.com/m/util/ — util (carried over from a previous live build)
-- https://dsh-why.com/m/zlib/ — zlib (carried over from a previous live build)
+- https://dsh-why.com/m/stream/ — stream (not in any shell module table)
+- https://dsh-why.com/m/buffer/ — buffer (not in any shell module table)
+- https://dsh-why.com/m/util/ — util (not in any shell module table)
+- https://dsh-why.com/m/fs/ — fs (not in any shell module table)
+- https://dsh-why.com/m/events/ — events (not in any shell module table)
+- https://dsh-why.com/m/domino/ — @mixmark-io/domino (not in any shell module table)
+- https://dsh-why.com/m/url/ — url (not in any shell module table)
+- https://dsh-why.com/m/zlib/ — zlib (not in any shell module table)
+- https://dsh-why.com/m/assert/ — assert (not in any shell module table)
+- https://dsh-why.com/m/process/ — process (not in any shell module table)
+- https://dsh-why.com/m/path/ — path (not in any shell module table)
+- https://dsh-why.com/m/esm-env/ — esm-env (not in any shell module table)
+- https://dsh-why.com/m/dsh-mcp-manager/ — @wanghailong0419/dsh-mcp-manager (not in any shell module table)
 
 ## The CLI
 - `npx dsh-why` — diagnose the current environment

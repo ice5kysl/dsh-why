@@ -26,6 +26,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { FAILURE_CLASSES } from '../../lib/runrules.mjs'
 import { RUN_PAGES } from './run-pages.mjs'
+import { GUIDE_CLI, GUIDE_HEAD, GUIDE_LABELS, GUIDE_SECTIONS } from './guide-pages.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const ORIGIN = 'https://dsh-why.com'
@@ -144,7 +145,7 @@ ${body}
 <footer>
   <div class="inner">
     <p class="fnote">${t('dsh-why — the “why did my dsh break” diagnostic.', 'dsh-why——「我的 dsh 为什么挂了」诊断。')}</p>
-    <nav><a href="/">dsh-why</a><a href="https://github.com/ice5kysl/dsh-why">GitHub</a><a href="https://dsh-insights.com/">dsh-insights.com</a></nav>
+    <nav><a href="/">dsh-why</a><a href="/guide/">${t('guide', '指南')}</a><a href="https://github.com/ice5kysl/dsh-why">GitHub</a><a href="https://dsh-insights.com/">dsh-insights.com</a></nav>
   </div>
 </footer>
 ${langToggleScript()}
@@ -308,6 +309,74 @@ function runPage(p) {
 }
 
 /**
+ * The /guide/ page.
+ *
+ * The site could diagnose and could index errors, but nothing explained the tool
+ * to someone who arrived from a search result on a single error page. Its two
+ * reference lists are generated from ERROR_PAGES / RUN_PAGES rather than written
+ * out, so a new class cannot leave the guide behind.
+ */
+function guidePage() {
+  const L = GUIDE_LABELS
+  const runList = (lang) => `<ul class="rel">${RUN_PAGES
+    .map((p) => `<li><a href="/e/${p.slug}/"><code>${esc(p.exact)}</code></a><span class="rel-note">${esc(p.label[lang])}</span></li>`)
+    .join('')}</ul>`
+  const loaderList = (lang) => `<ul class="rel">${ERROR_PAGES
+    .map((p) => `<li><a href="/e/${p.slug}/"><code>${esc(p.exact)}</code></a><span class="rel-note">${esc(p.title[lang === 'en' ? 'en' : 'zh'] ?? '')}</span></li>`)
+    .join('')}</ul>`
+
+  const table = (head, rows) => `<table class="qtable"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows
+    .map((r) => `<tr>${r.map((cell) => `<td>${cell}</td>`).join('')}</tr>`)
+    .join('')}</tbody></table>`
+
+  const sections = GUIDE_SECTIONS.map((section) => {
+    const extra = section.id === 'runs'
+      ? b(
+        `<h3>${L.loadersTitle[0]}</h3>${loaderList('en')}<h3>${L.runsTitle[0]}</h3>${runList('en')}`,
+        `<h3>${L.loadersTitle[1]}</h3>${loaderList('zh')}<h3>${L.runsTitle[1]}</h3>${runList('zh')}`,
+      )
+      : ''
+    return secShared(section.h2[0], section.h2[1], `${b(section.en.join(''), section.zh.join(''))}${extra}`)
+  }).join('\n  ')
+
+  const cli = table(
+    [L.cliCol[0], L.cliWhat[0]],
+    GUIDE_CLI.rows.map(([cmd, en]) => [`<code>${esc(cmd)}</code>`, esc(en)]),
+  )
+  const cliZh = table(
+    [L.cliCol[1], L.cliWhat[1]],
+    GUIDE_CLI.rows.map(([cmd, , zh]) => [`<code>${esc(cmd)}</code>`, esc(zh)]),
+  )
+  const exits = table([L.exitCol[0], L.exitWhat[0]], GUIDE_CLI.exits.map(([code, en]) => [`<code>${code}</code>`, esc(en)]))
+  const exitsZh = table([L.exitCol[1], L.exitWhat[1]], GUIDE_CLI.exits.map(([code, , zh]) => [`<code>${code}</code>`, esc(zh)]))
+
+  const trail = [{ name: 'guide' }]
+  const body = `
+  <header class="hero slim">
+    ${crumbs(trail)}
+    <p class="kicker">DeepSeek Harness · guide</p>
+    <h1>${esc(GUIDE_HEAD.h1[0])}</h1>
+    ${b(`<p class="lead">${esc(GUIDE_HEAD.lead[0])}</p>`, `<p class="lead">${esc(GUIDE_HEAD.lead[1])}</p>`)}
+  </header>
+  ${sections}
+  ${secShared(L.cliTitle[0], L.cliTitle[1], b(cli, cliZh))}
+  ${secShared(L.exitTitle[0], L.exitTitle[1], b(exits, exitsZh))}
+  ${relatedBlock('Where to go next', '接下来去哪', [
+    { href: '/#reference', exact: 'the full error and module reference', note: { en: ' — every failure class, and every module with its per-shell history', zh: ' —— 全部失败类别,以及每个模块在各 shell 上的生命周期' } },
+    { href: '/#run-failures', exact: 'run failures, all of them', note: { en: ' — the eight classes dsh-why run can name', zh: ' —— dsh-why run 能定性的八个类别' } },
+    { href: 'https://github.com/ice5kysl/dsh-why/blob/main/docs/PLUGIN-AUTHOR-GATE.md', exact: 'the plugin-author gate guide', note: { en: ' — CI recipes and the seed-safe fix pattern', zh: ' —— CI 写法与 seed-safe 修法' } },
+  ])}
+  `
+  return shell({
+    title: GUIDE_HEAD.title,
+    description: GUIDE_HEAD.description,
+    path: 'guide/',
+    jsonLd: [breadcrumbJsonLd(trail, 'guide/')],
+    body,
+  })
+}
+
+/**
  * The run pages and the CLI must agree on slugs in BOTH directions: a page the
  * classifier cannot produce is dead weight, and a class with no page is a 404
  * that the report already printed. Fail the build rather than ship either.
@@ -463,6 +532,11 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
     written.push(`e/${p.slug}/`)
   }
 
+  // the orientation layer: what this is and when to run which command
+  mkdirSync(join(outRoot, 'guide'), { recursive: true })
+  writeFileSync(join(outRoot, 'guide', 'index.html'), guidePage())
+  written.push('guide/')
+
   for (const [spec, entry] of Object.entries(fixes.modules ?? {})) {
     const baseName = spec.endsWith('/client') ? spec.slice(0, -'/client'.length) : spec
     const slug = baseName.split('/').pop() // drop the @scope for a readable URL
@@ -532,6 +606,7 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. \`npx dsh-why\` reads your
 
 ## Pages
 - ${ORIGIN}/ — paste an error, get the diagnosis
+- ${ORIGIN}/guide/ — what dsh-why is, which command when, and the exit codes
 - https://github.com/ice5kysl/dsh-why — source
 - https://www.npmjs.com/package/dsh-why — the CLI package
 

@@ -305,3 +305,13 @@ html[data-lang="en"] .zh-only { display: none !important; }
 .e-sec .rel a { text-decoration: none; }
 .e-sec .rel a:hover code { color: var(--accent); }
 .e-sec .rel .rel-note { display: block; margin-top: 3px; font: 400 13.5px/1.6 var(--sans); color: var(--fg-3); }
+
+/* the guide: a real table, and a code block that survives wrapping */
+.qtable { width: 100%; border-collapse: collapse; margin: 0 0 4px; }
+.qtable th { text-align: left; padding: 6px 12px 6px 0; font: 600 13px var(--sans); color: var(--fg-3); border-bottom: 1px solid var(--line, rgba(128,128,128,.2)); }
+.qtable td { padding: 8px 12px 8px 0; vertical-align: top; font: 400 14.5px/1.6 var(--sans); color: var(--fg-2); border-bottom: 1px solid var(--line, rgba(128,128,128,.12)); }
+.qtable td:first-child { white-space: nowrap; color: var(--fg); }
+.qtable code { font-size: 13.5px; }
+pre.code { margin: 12px 0; padding: 12px 14px; border-radius: 8px; background: var(--bg-soft); box-shadow: var(--card); overflow-x: auto; }
+pre.code code { font-size: 13.5px; line-height: 1.7; white-space: pre; }
+.e-sec h3 { margin: 22px 0 10px; font: 600 14px var(--sans); color: var(--fg-3); text-transform: uppercase; letter-spacing: .04em; }

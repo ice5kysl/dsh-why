@@ -219,15 +219,18 @@ describe('internal link graph (the pages used to be 30 orphan leaves)', () => {
   /** every page the generator wrote, plus its outbound topic links */
   function linkGraph() {
     const pages = new Map()
-    for (const group of ['e', 'm']) {
-      for (const entry of readdirSync(join(out, group))) {
-        const file = join(out, group, entry, 'index.html')
-        if (!existsSync(file)) continue
-        const html = readFileSync(file, 'utf8')
-        const hrefs = [...html.matchAll(/href="(\/[em]\/[^"#]+)"/g)].map((m) => m[1])
-        pages.set(`/${group}/${entry}/`, { html, hrefs })
-      }
+    const add = (rel) => {
+      const file = join(out, rel, 'index.html')
+      if (!existsSync(file)) return
+      const html = readFileSync(file, 'utf8')
+      // only real page links; in-page anchors (#…) are checked by another test
+      const hrefs = [...html.matchAll(/href="(\/(?:e|m|guide)\/[^"#]*)"/g)].map((m) => m[1])
+      pages.set(`/${rel}/`, { html, hrefs })
     }
+    for (const group of ['e', 'm']) {
+      for (const entry of readdirSync(join(out, group))) add(`${group}/${entry}`)
+    }
+    add('guide')
     return pages
   }
 
@@ -282,3 +285,52 @@ function escRe(s) {
   const htmlEscaped = String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   return htmlEscaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
+
+describe('the /guide/ page (the orientation layer)', () => {
+  const html = () => readFileSync(join(out, 'guide', 'index.html'), 'utf8')
+
+  it('answers what it is, which command when, and what it refuses to do', () => {
+    const page = html()
+    for (const heading of ['What dsh-why is', 'Which one do I run?', 'If you publish a plugin', 'What it will never do', 'Exit codes']) {
+      assert.match(page, new RegExp(heading.replace(/[?]/g, '\\?')), `missing section: ${heading}`)
+    }
+    // the exit-code contract has to be on the page people land on
+    assert.match(page, /could not be performed/)
+  })
+
+  it('lists the failure classes from the generators, not by hand', async () => {
+    const { RUN_PAGES } = await import('../web/gen/run-pages.mjs')
+    const page = html()
+    for (const run of RUN_PAGES) {
+      assert.match(page, new RegExp(`href="/e/${run.slug}/"`), `guide is missing ${run.slug}`)
+    }
+    for (const slug of ['missed-the-module-table', 'cannot-resolve', 'bundle-script-failed', 'failed-to-load-plugins']) {
+      assert.match(page, new RegExp(`href="/e/${slug}/"`), `guide is missing ${slug}`)
+    }
+  })
+
+  it('is bilingual and carries a BreadcrumbList', () => {
+    const page = html()
+    assert.match(page, /en-only/)
+    assert.match(page, /zh-only/)
+    assert.match(page, /"@type":"BreadcrumbList"/)
+  })
+
+  it('is reachable from every other page (no orphan hub)', () => {
+    const page = html()
+    assert.match(page, /href="\/"/) // the wordmark
+    // and every generated page links back to it via the footer
+    for (const group of ['e', 'm']) {
+      for (const entry of readdirSync(join(out, group))) {
+        const file = join(out, group, entry, 'index.html')
+        if (!existsSync(file)) continue
+        assert.match(readFileSync(file, 'utf8'), /href="\/guide\/"/, `${group}/${entry} does not link the guide`)
+      }
+    }
+  })
+
+  it('ships in the sitemap and llms.txt', () => {
+    assert.match(readFileSync(join(out, 'sitemap.xml'), 'utf8'), /https:\/\/dsh-why\.com\/guide\//)
+    assert.match(readFileSync(join(out, 'llms.txt'), 'utf8'), /https:\/\/dsh-why\.com\/guide\//)
+  })
+})

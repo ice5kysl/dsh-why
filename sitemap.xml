@@ -13,6 +13,7 @@
   <url><loc>https://dsh-why.com/e/provider-server/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://dsh-why.com/e/provider-timeout/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://dsh-why.com/e/provider-transport/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://dsh-why.com/guide/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://dsh-why.com/m/assert/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://dsh-why.com/m/buffer/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://dsh-why.com/m/domino/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
