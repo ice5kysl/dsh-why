@@ -14,17 +14,63 @@ import { fstatSync, readFileSync } from 'node:fs'
 
 import { detectLang, t } from '../lib/i18n.mjs'
 import { runDiagnosis } from '../lib/diagnose.mjs'
-import { buildFixPrompt, buildIssueTemplate, renderText } from '../lib/report.mjs'
+import { buildRunReport } from '../lib/runrules.mjs'
+import { buildFixPrompt, buildIssueTemplate, renderRunText, renderText } from '../lib/report.mjs'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const VERSION = pkg.version
 
-function usage(lang) {
+function runUsage(lang) {
+  const zh = lang === 'zh'
+  return zh
+    ? `dsh-why run v${VERSION} —— 给一次 dsh run 定性（只读本地会话日志）
+
+用法：dsh-why run [选项]
+
+选项：
+  --all               看健康视图：扫描全部会话，区分「长期噪声」与「异常日」
+  --limit <n>         --all 时最多扫描多少个日志（默认 200，按新到旧）
+  --json              机器可读输出（与文本渲染消费同一个对象）
+  --dsh-home <path>   覆盖 DSH_HOME（默认 ~/.dsh）
+  --lang <zh|en>      输出语言（默认按 LANG/LC_ALL 粗判）
+  --no-color          关闭颜色
+  --help              本帮助
+
+判定档位（绝不把盲区变成红牌）：
+  完成 / 你主动停止   → 不算故障
+  已归因（error）     → 有 error code 与 provider 原话支撑
+  无法定性            → run 没跑完或日志被截断：明说不知道，不猜
+
+退出码：0 范围内无失败 run，1 有失败 run，2 用法错误。`
+    : `dsh-why run v${VERSION} — attribute a dsh run (reads local session logs only)
+
+Usage: dsh-why run [options]
+
+Options:
+  --all               health view: scan every session, separating chronic noise from incidents
+  --limit <n>         with --all, how many logs to scan (default 200, newest first)
+  --json              machine-readable report (the same object the text renderer consumes)
+  --dsh-home <path>   override DSH_HOME (default: ~/.dsh)
+  --lang <zh|en>      output language (default: guessed from LANG/LC_ALL)
+  --no-color          disable colors
+  --help              this help
+
+Verdict tiers (a blind spot is never turned into a red card):
+  completed / stopped by you  → not a failure
+  attributed (error)          → backed by an error code and the provider's own words
+  unclassified                → the run never finished or the log is truncated: said plainly, never guessed
+
+Exit codes: 0 = no failed run in scope, 1 = a failed run, 2 = usage error.`
+}
+
+function usage(lang, command = 'diagnose') {
+  if (command === 'run') return runUsage(lang)
   const zh = lang === 'zh'
   return zh
     ? `dsh-why v${VERSION} —— dsh（DeepSeek Harness）失败诊断
 
 用法：dsh-why [选项]
+      dsh-why run [选项]   给一次 run 定性（见 dsh-why run --help）
 
 选项：
   --json              机器可读输出（CI / 喂给 LLM）
@@ -43,6 +89,7 @@ function usage(lang) {
     : `dsh-why v${VERSION} — dsh (DeepSeek Harness) failure diagnostics
 
 Usage: dsh-why [options]
+       dsh-why run [options]   attribute a run (see: dsh-why run --help)
 
 Options:
   --json              machine-readable report (CI / feed to an LLM)
@@ -61,17 +108,20 @@ Read-only by design: never modifies any file. Exit codes: 0 = no crash-level fin
 }
 
 function parseArgs(argv) {
-  const opts = { json: false, offline: false, noColor: false, prompt: false, lang: null, profile: null, packageDir: null, dshHome: null, error: null, help: false, version: false }
+  const opts = { json: false, offline: false, noColor: false, prompt: false, lang: null, profile: null, packageDir: null, dshHome: null, error: null, all: false, limit: 200, help: false, version: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--json') opts.json = true
     else if (arg === '--offline') opts.offline = true
     else if (arg === '--no-color') opts.noColor = true
     else if (arg === '--prompt') opts.prompt = true
+    else if (arg === '--all') opts.all = true
     else if (arg === '--help' || arg === '-h') opts.help = true
     else if (arg === '--version' || arg === '-v') opts.version = true
     else if (arg === '--lang') opts.lang = argv[++i]
     else if (arg.startsWith('--lang=')) opts.lang = arg.slice('--lang='.length)
+    else if (arg === '--limit') opts.limit = Number(argv[++i])
+    else if (arg.startsWith('--limit=')) opts.limit = Number(arg.slice('--limit='.length))
     else if (arg === '--profile') opts.profile = argv[++i]
     else if (arg.startsWith('--profile=')) opts.profile = arg.slice('--profile='.length)
     else if (arg === '--package') opts.packageDir = argv[++i]
@@ -87,6 +137,7 @@ function parseArgs(argv) {
     else return { error: arg }
   }
   if (opts.lang !== null && opts.lang !== 'zh' && opts.lang !== 'en') return { error: `--lang ${opts.lang}` }
+  if (!Number.isFinite(opts.limit) || opts.limit < 1) return { error: `--limit ${opts.limit}` }
   return { opts }
 }
 
@@ -137,18 +188,39 @@ async function readStdin({ patient = false } = {}) {
 }
 
 async function main() {
-  const parsed = parseArgs(process.argv.slice(2))
+  const argv = process.argv.slice(2)
+  // `dsh-why run` is the run-forensics face; bare `dsh-why` is the startup check.
+  const command = argv[0] === 'run' ? 'run' : 'diagnose'
+  const parsed = parseArgs(command === 'run' ? argv.slice(1) : argv)
   const preLang = detectLang(process.env, parsed.opts?.lang ?? null)
   if (parsed.error) {
     console.error(`${preLang === 'zh' ? '无法识别的参数' : 'unrecognized option'}: ${parsed.error}\n`)
-    console.error(usage(preLang))
+    console.error(usage(preLang, command))
     process.exitCode = 2
     return
   }
   const { opts } = parsed
   const lang = detectLang(process.env, opts.lang)
-  if (opts.help) { console.log(usage(lang)); return }
+  if (opts.help) { console.log(usage(lang, command)); return }
   if (opts.version) { console.log(VERSION); return }
+
+  if (command === 'run') {
+    const report = buildRunReport({
+      dshHome: opts.dshHome,
+      scope: opts.all ? 'all' : 'latest',
+      limit: opts.limit,
+    })
+    if (opts.json) {
+      console.log(JSON.stringify({ ...report, tool: { name: 'dsh-why', version: VERSION } }, null, 2))
+    } else {
+      const color = !opts.noColor && process.stdout.isTTY && !process.env.NO_COLOR
+      console.log(renderRunText(report, lang, VERSION, { color }))
+    }
+    // A failed run in scope is the gate. `--all` therefore reports 1 whenever the
+    // window contains any failure — that is the intended CI semantic.
+    process.exitCode = report.summary.errors > 0 ? 1 : 0
+    return
+  }
 
   // Error input precedence: --error <text> > --error (stdin) > piped stdin.
   let errorText = null

@@ -123,6 +123,47 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 
 Environment overrides for unusual setups: `DSH_WHY_NPM_ROOT` (where the global npm packages live), `DSH_WHY_PROFILE` (profile name).
 
+## `dsh-why run` — when dsh boots fine but a run dies
+
+The startup check answers *"why won't dsh start"*. `dsh-why run` answers the other
+one: **the run is over, you have a symptom, and nothing told you why.** It reads
+your own session logs — read-only, no model, no upload.
+
+```
+dsh-why run                # attribute your latest session's turns
+dsh-why run --all          # health view: scan every session
+dsh-why run --json         # same object the text renderer consumes
+```
+
+The verdict comes from `turn/end.reason`, and it is a **closed vocabulary** —
+across a real corpus every failure carried one of eight codes, so the whole
+observed failure space is enumerable rather than open-ended:
+
+| verdict | meaning |
+|---|---|
+| `completed` | fine |
+| `aborted` (stopped by you) | **not a failure** — a deliberate stop is never a red card |
+| `error` (attributed) | backed by an `error.code` and the provider's own words |
+| `unclassified` | interrupted, or the run never finished: **said plainly, never guessed** |
+
+`--all` adds the part a single run cannot show: your own **baseline** failure
+rate, the **failure mix**, and an **incident** list for days that differ from
+that baseline — which is how chronic noise (an API call that fails 1–12×/day for
+weeks) is told apart from a real event (a model switch that broke the key, at 57%
+for one day).
+
+Two honesty notes it will always print rather than hide:
+
+- Session logs are a **chain of independent zstd frames**, and frames overlap. A
+  naive single-frame read returns the *first* event and silently drops the rest,
+  so the report states how many frames were decoded and whether events paired up.
+- If a log is truncated or a turn was interrupted, you get `UNCLASSIFIED` and an
+  explicit "I will not guess" — an unfinished run is not evidence of a broken plugin.
+
+**Exit codes**: `0` = no failed run in scope (unclassified and self-aborted turns
+do not gate) · `1` = a failed run in scope (so `run --all` is usable as a CI gate
+for "no failed turns in this window") · `2` = usage error.
+
 ## For plugin authors
 
 - Guard optional host modules: `try { require("@deepseek-ai/dsh-client-store") } catch { /* fallback */ }` — the loader resolves `require()` at call time, so a paired catch turns a crash into a graceful degradation. dsh-why reports guarded misses as notes, never as crashes.
