@@ -114,6 +114,7 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--profile <name>` | 诊断指定 profile（默认 `web`，或唯一的那个） |
 | `--error [文本]` | 解析粘贴的报错文本（缺省读 stdin；管道输入自动识别），替代全量扫描 |
 | `--prompt` | 末尾附可粘给 AI agent 的修复 prompt |
+| `--share` | opt-in：把崩溃级 finding 上报到生态案例库（api.dsh-why.com）。发送前打印完整 payload——只有结构化字段（规则号/签名哈希/shell 与插件版本），绝无消息、路径或 prompt |
 | `--dsh-home <path>` | 覆盖 `DSH_HOME`（也认环境变量 `DSH_HOME`） |
 | `--lang zh\|en` | 输出语言（默认按 `LC_ALL`/`LANG`） |
 | `--no-color` | 关闭颜色（认 `NO_COLOR` 环境变量） |

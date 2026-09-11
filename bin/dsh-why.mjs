@@ -16,6 +16,7 @@ import { detectLang, t } from '../lib/i18n.mjs'
 import { runDiagnosis } from '../lib/diagnose.mjs'
 import { buildRunReport } from '../lib/runrules.mjs'
 import { buildFixPrompt, buildIssueTemplate, renderRunText, renderText } from '../lib/report.mjs'
+import { buildSharePayloads, postShare } from '../lib/share.mjs'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const VERSION = pkg.version
@@ -80,6 +81,8 @@ function usage(lang, command = 'diagnose') {
   --dsh-home <path>   覆盖 DSH_HOME（默认 ~/.dsh）
   --error [文本]      解析粘贴的报错文本（缺省读 stdin，管道输入自动识别）
   --prompt            末尾附可粘给 AI agent 的修复 prompt
+  --share             上报崩溃级 finding 到生态案例库（opt-in；发送前打印
+                      完整 payload——只有结构化字段，绝无消息/路径/prompt）
   --lang <zh|en>      输出语言（默认按 LANG/LC_ALL 粗判）
   --no-color          关闭颜色
   --version           打印版本
@@ -103,6 +106,9 @@ Options:
   --dsh-home <path>   override DSH_HOME (default: ~/.dsh)
   --error [text]      parse a pasted error text (reads stdin when omitted; pipes auto-detected)
   --prompt            append a paste-ready fix prompt for an AI agent
+  --share             share crash-level findings with the ecosystem case base
+                      (opt-in; the exact payload is printed before sending —
+                      structured fields only, never messages/paths/prompts)
   --lang <zh|en>      output language (default: guessed from LANG/LC_ALL)
   --no-color          disable colors
   --version           print version
@@ -115,13 +121,14 @@ CI gate: npx dsh-why --package . && npm publish    (any non-zero must block the 
 }
 
 function parseArgs(argv) {
-  const opts = { json: false, offline: false, noColor: false, prompt: false, lang: null, profile: null, packageDir: null, dshHome: null, error: null, all: false, limit: 200, help: false, version: false }
+  const opts = { json: false, offline: false, noColor: false, prompt: false, share: false, lang: null, profile: null, packageDir: null, dshHome: null, error: null, all: false, limit: 200, help: false, version: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--json') opts.json = true
     else if (arg === '--offline') opts.offline = true
     else if (arg === '--no-color') opts.noColor = true
     else if (arg === '--prompt') opts.prompt = true
+    else if (arg === '--share') opts.share = true
     else if (arg === '--all') opts.all = true
     else if (arg === '--help' || arg === '-h') opts.help = true
     else if (arg === '--version' || arg === '-v') opts.version = true
@@ -245,17 +252,52 @@ async function main() {
     errorText,
   })
 
+  // --share (opt-in): send crash-level findings to the ecosystem case base.
+  // The exact payload is disclosed before it goes out — that disclosure is the
+  // consent surface, so it stays even in --json mode (as a `share` key).
+  let shareResults = null
+  if (opts.share) {
+    const payloads = buildSharePayloads(report)
+    const endpoint = process.env.DSH_WHY_SHARE_ENDPOINT || undefined
+    shareResults = []
+    if (!payloads.length) {
+      shareResults.push({ ok: false, skipped: true, reason: 'no-crash-level-findings' })
+    } else {
+      for (const payload of payloads) {
+        shareResults.push({ payload, ...(await postShare(payload, { endpoint })) })
+      }
+    }
+  }
+
   if (opts.json) {
     const out = {
       ...report,
       tool: { name: 'dsh-why', version: VERSION },
       issueTemplate: buildIssueTemplate(report, lang, VERSION),
       fixPrompt: buildFixPrompt(report, lang, VERSION),
+      ...(shareResults ? { share: shareResults } : {}),
     }
     console.log(JSON.stringify(out, null, 2))
   } else {
     const color = !opts.noColor && process.stdout.isTTY && !process.env.NO_COLOR
     console.log(renderText(report, lang, VERSION, { color, showPrompt: opts.prompt }))
+    if (shareResults) {
+      const zh = lang === 'zh'
+      const lines = [zh ? '── 上报生态案例库（--share）──' : '── share with the case base (--share) ──']
+      for (const r of shareResults) {
+        if (r.skipped) {
+          lines.push(zh ? '没有崩溃级 finding，无可上报内容。' : 'No crash-level findings — nothing to share.')
+        } else {
+          lines.push((zh ? '发送内容：' : 'payload: ') + JSON.stringify(r.payload))
+          lines.push(
+            r.ok
+              ? (zh ? `已上报 ✓（${r.id ?? 'ok'}）` : `shared ✓ (${r.id ?? 'ok'})`)
+              : (zh ? `上报失败（不影响诊断）：${r.error}` : `share failed (diagnosis unaffected): ${r.error}`),
+          )
+        }
+      }
+      console.log(lines.join('\n'))
+    }
   }
 
   // Exit codes, in order of what a caller must do about it:

@@ -115,6 +115,7 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--package <dir>` | plugin-author self-check: diagnose one plugin directory's client bundle (a pre-publish gate) |
 | `--error [text]` | parse a pasted error text instead of scanning the profile (reads stdin when the value is omitted; piped stdin is auto-detected) |
 | `--prompt` | append a paste-ready fix prompt for an AI coding agent |
+| `--share` | opt-in: report crash-level findings to the ecosystem case base (api.dsh-why.com). The exact payload is printed before sending — structured fields only (rule id / signature hash / shell & plugin versions), never messages, paths or prompts |
 | `--dsh-home <path>` | override `DSH_HOME` (env `DSH_HOME` is honored too) |
 | `--lang zh\|en` | output language (default: from `LC_ALL`/`LANG`) |
 | `--no-color` | disable ANSI colors (`NO_COLOR` env respected) |
