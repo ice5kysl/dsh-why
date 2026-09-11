@@ -85,7 +85,10 @@ function usage(lang, command = 'diagnose') {
   --version           打印版本
   --help              本帮助
 
-只读工具：永远不修改你的任何文件。退出码：0 无崩溃级问题，1 有崩溃级问题。`
+只读工具：永远不修改你的任何文件。
+退出码：0 无崩溃级问题 · 1 有崩溃级问题 · 3 检查无法执行（--package 指向未构建的仓库或没有 package.json 的路径）· 2 用法错误。
+
+CI 门禁写法：npx dsh-why --package . && npm publish    （任何非 0 都必须拦住发版）`
     : `dsh-why v${VERSION} — dsh (DeepSeek Harness) failure diagnostics
 
 Usage: dsh-why [options]
@@ -96,6 +99,7 @@ Options:
   --offline           no network — bundled local rule base only
   --profile <name>    diagnose a specific profile (default: web, or the only one)
   --package <dir>     plugin-author self-check: diagnose one plugin directory
+                      (a pre-publish gate — exit 3 means it could not check)
   --dsh-home <path>   override DSH_HOME (default: ~/.dsh)
   --error [text]      parse a pasted error text (reads stdin when omitted; pipes auto-detected)
   --prompt            append a paste-ready fix prompt for an AI agent
@@ -104,7 +108,10 @@ Options:
   --version           print version
   --help              this help
 
-Read-only by design: never modifies any file. Exit codes: 0 = no crash-level findings, 1 = crash-level findings.`
+Read-only by design: never modifies any file.
+Exit codes: 0 = no crash-level findings · 1 = crash-level findings · 3 = the check COULD NOT BE PERFORMED (--package pointed at an unbuilt checkout or a path with no package.json) · 2 = usage error.
+
+CI gate: npx dsh-why --package . && npm publish    (any non-zero must block the release)`
 }
 
 function parseArgs(argv) {
@@ -251,10 +258,16 @@ async function main() {
     console.log(renderText(report, lang, VERSION, { color, showPrompt: opts.prompt }))
   }
 
-  // process.exitCode, never process.exit(): a --json report is now tens of KB,
-  // and exiting with output still queued truncates piped stdout — exactly how CI
-  // consumes it (`dsh-why --json | jq`). Letting Node exit on its own flushes.
-  process.exitCode = report.summary.errors > 0 ? 1 : 0
+  // Exit codes, in order of what a caller must do about it:
+  //   0  nothing crash-level was found
+  //   1  a crash-level finding — the plugin will break the loader
+  //   3  the check COULD NOT BE PERFORMED (--package on an unbuilt checkout, or
+  //      on a path with no manifest). Deliberately non-zero: for a pre-publish
+  //      gate, a green light it did not earn is worse than a red one.
+  //   2  usage error or an internal bug (set above / below)
+  if (report.summary.errors > 0) process.exitCode = 1
+  else if (report.packageMode && report.summary.unclassified > 0) process.exitCode = 3
+  else process.exitCode = 0
 }
 
 main().catch((error) => {

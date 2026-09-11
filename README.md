@@ -119,7 +119,14 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 | `--lang zh\|en` | output language (default: from `LC_ALL`/`LANG`) |
 | `--no-color` | disable ANSI colors (`NO_COLOR` env respected) |
 
-**Exit codes**: `0` = no crash-level findings · `1` = crash-level findings (usable as a CI gate) · `2` = usage error or an internal bug (please report).
+**Exit codes**: `0` = no crash-level findings · `1` = crash-level findings (usable as a CI gate) · `3` = **the check could not be performed** · `2` = usage error or an internal bug (please report).
+
+`3` is what a pre-publish gate returns when it read nothing: `--package` pointed at a path with no `package.json`, or at a checkout whose declared client bundle was never built. A gate that passes when it verified nothing is worse than no gate, so it is deliberately **not** `0`. Any non-zero must block the release:
+
+```
+npx dsh-why --package . && npm publish
+```
+
 
 Environment overrides for unusual setups: `DSH_WHY_NPM_ROOT` (where the global npm packages live), `DSH_WHY_PROFILE` (profile name).
 
@@ -168,7 +175,7 @@ for "no failed turns in this window") · `2` = usage error.
 
 - Guard optional host modules: `try { require("@deepseek-ai/dsh-client-store") } catch { /* fallback */ }` — the loader resolves `require()` at call time, so a paired catch turns a crash into a graceful degradation. dsh-why reports guarded misses as notes, never as crashes.
 - Declare `engines.dsh` in package.json and keep it honest.
-- Pre-publish gate in CI: `npx dsh-why --package . --json` — diagnoses the plugin directory's client bundle against the current shell's module table and exits 1 when a require would crash the loader. `npx dsh-why --package .` for a human-readable report.
+- Pre-publish gate in CI: `npx dsh-why --package .` — diagnoses the plugin directory's built client bundle against the real shell module table. Exit `1` when a require would crash the loader, exit `3` when the check could not be performed at all (unbuilt checkout, no manifest). `--json` for a machine-readable report. **→ [Set it up in 30 seconds](https://github.com/ice5kysl/dsh-why/blob/main/docs/PLUGIN-AUTHOR-GATE.md)**
 
 ## Related
 
