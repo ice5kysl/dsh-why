@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
@@ -212,3 +212,73 @@ describe('the reported rule-base version has one source', () => {
     assert.equal(ref.toolVersion, pkg.version)
   })
 })
+
+describe('internal link graph (the pages used to be 30 orphan leaves)', () => {
+  const rootIndex = readFileSync(join(new URL('..', import.meta.url).pathname, 'index.html'), 'utf8')
+
+  /** every page the generator wrote, plus its outbound topic links */
+  function linkGraph() {
+    const pages = new Map()
+    for (const group of ['e', 'm']) {
+      for (const entry of readdirSync(join(out, group))) {
+        const file = join(out, group, entry, 'index.html')
+        if (!existsSync(file)) continue
+        const html = readFileSync(file, 'utf8')
+        const hrefs = [...html.matchAll(/href="(\/[em]\/[^"#]+)"/g)].map((m) => m[1])
+        pages.set(`/${group}/${entry}/`, { html, hrefs })
+      }
+    }
+    return pages
+  }
+
+  it('has no dead internal links', () => {
+    const pages = linkGraph()
+    for (const [path, { hrefs }] of pages) {
+      for (const href of hrefs) {
+        assert.equal(pages.has(href), true, `${path} links ${href}, which was not generated`)
+      }
+    }
+  })
+
+  it('has no orphan page — every topic page links to at least one other', () => {
+    for (const [path, { hrefs }] of linkGraph()) {
+      assert.equal(hrefs.filter((h) => h !== path).length > 0, true, `${path} is an orphan leaf`)
+    }
+  })
+
+  it('run pages link sibling failures with the exact error string as anchor text', async () => {
+    const { RUN_PAGES } = await import('../web/gen/run-pages.mjs')
+    const bySlug = new Map(RUN_PAGES.map((p) => [p.slug, p]))
+    for (const page of RUN_PAGES) {
+      const html = page_(out, `e/${page.slug}`)
+      assert.equal(page.related.length >= 2, true, `${page.slug} has too few related classes`)
+      for (const slug of page.related) {
+        // the link exists…
+        assert.match(html, new RegExp(`href="/e/${slug}/"`), `${page.slug} → ${slug}`)
+        // …and its anchor text is the target's own error string, which is what the
+        // reader searched for and what the target page ranks for
+        assert.match(html, new RegExp(escRe(bySlug.get(slug).exact)), `${page.slug} → ${slug} anchor text`)
+      }
+    }
+  })
+
+  it('every topic page carries a BreadcrumbList, and its anchors exist on the home page', () => {
+    const ids = new Set([...rootIndex.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))
+    for (const [path, { html }] of linkGraph()) {
+      assert.match(html, /"@type":"BreadcrumbList"/, `${path} has no BreadcrumbList`)
+      for (const anchor of [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1])) {
+        assert.equal(ids.has(anchor), true, `${path} points at #${anchor}, which the home page does not define`)
+      }
+    }
+  })
+})
+
+function page_(root, rel) {
+  return readFileSync(join(root, rel, 'index.html'), 'utf8')
+}
+
+/** The anchor text is the target's error string AS RENDERED: esc() first, then regex. */
+function escRe(s) {
+  const htmlEscaped = String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return htmlEscaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}

@@ -112,6 +112,10 @@ function langToggleScript() {
 }
 
 function shell({ title, description, path, jsonLd, body }) {
+  const structured = (Array.isArray(jsonLd) ? jsonLd : [jsonLd])
+    .filter(Boolean)
+    .map((block) => `<script type="application/ld+json">${block}</script>`)
+    .join('\n')
   return `<!doctype html>
 <html lang="en" data-lang="en">
 <head>
@@ -125,7 +129,7 @@ function shell({ title, description, path, jsonLd, body }) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist-mono/index.css">
 <link rel="stylesheet" href="/web/base.css">
 <script type="module" src="/web/analytics.mjs"></script>
-<script type="application/ld+json">${jsonLd}</script>
+${structured}
 </head>
 <body>
 <header class="nav">
@@ -152,6 +156,47 @@ ${langToggleScript()}
 function faqJsonLd(faq) {
   const main = faq.map((f) => ({ '@type': 'Question', name: f.q.en, acceptedAnswer: { '@type': 'Answer', text: f.a.en } }))
   return JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: main })
+}
+
+/**
+ * Breadcrumbs, visible and structured.
+ *
+ * Beyond the SERP treatment, they are what tells a crawler these pages are a
+ * hierarchy rather than 30 unrelated leaves: every topic page currently links
+ * only to `/`, so without a trail there is no path from the hub to the branch.
+ * @param {{name: string, href?: string}[]} trail
+ */
+function breadcrumbJsonLd(trail, path) {
+  const items = [
+    { '@type': 'ListItem', position: 1, name: 'dsh-why', item: `${ORIGIN}/` },
+    ...trail.map((step, i) => ({
+      '@type': 'ListItem',
+      position: i + 2,
+      name: step.name,
+      ...(step.href ? { item: step.href.startsWith('http') ? step.href : `${ORIGIN}${step.href}` } : { item: `${ORIGIN}/${path}` }),
+    })),
+  ]
+  return JSON.stringify({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items })
+}
+
+function crumbs(trail) {
+  const parts = [`<a href="/">dsh-why</a>`]
+  for (const step of trail) {
+    parts.push(step.href ? `<a href="${step.href}">${esc(step.name)}</a>` : `<span>${esc(step.name)}</span>`)
+  }
+  return `<nav class="crumbs" aria-label="breadcrumb">${parts.join('<span class="sep">›</span>')}</nav>`
+}
+
+/**
+ * The related block. The anchor text is deliberately the TARGET's exact error
+ * string, not "read more": the string is both what the reader searched for and
+ * what the target page is optimised around.
+ */
+function relatedBlock(titleEn, titleZh, items) {
+  const list = (lang) => `<ul class="rel">${items
+    .map((item) => `<li><a href="${item.href}"><code>${esc(item.exact)}</code></a><span class="rel-note">${esc(item.note[lang])}</span></li>`)
+    .join('')}</ul>`
+  return `<section class="e-sec"><h2>${t(titleEn, titleZh)}</h2>${b(list('en'), list('zh'))}</section>`
 }
 
 function moduleFaqJsonLd(name, fixText) {
@@ -182,8 +227,22 @@ const ctaFor = (sample) => `<div class="cta"><code>npx dsh-why</code> <a href="$
 // ── generators ──────────────────────────────────────────────────────────────
 function errorPage(p) {
   const cta = ctaFor(p.sample)
+  const trail = [{ name: 'loader errors', href: '/#loader-errors' }, { name: p.slug }]
+  // The loader pages were leaves too: each one links its siblings and the run
+  // half of the product, so the two branches of the reference stay connected.
+  const related = ERROR_PAGES.filter((other) => other.slug !== p.slug).map((other) => ({
+    href: `/e/${other.slug}/`,
+    exact: other.exact,
+    note: { en: ' — another way a plugin fails to load', zh: ' —— 插件加载失败的另一种形态' },
+  }))
+  related.push({
+    href: '/e/provider-transport/',
+    exact: 'DeepSeek API request to https://api.deepseek.com failed',
+    note: { en: ' — dsh starts fine, but a run dies', zh: ' —— dsh 起得来，但某次 run 挂了' },
+  })
   const body = `
   <header class="hero slim">
+    ${crumbs(trail)}
     <p class="kicker">DeepSeek Harness · failure diagnosis</p>
     <h1>${esc(p.title)}</h1>
     <p class="errstring"><code>${esc(p.exact)}</code></p>
@@ -191,10 +250,15 @@ function errorPage(p) {
   </header>
   ${sec('Why it happens', '根因', `<p>${esc(p.cause.en)}</p>`, `<p>${esc(p.cause.zh)}</p>`)}
   ${sec('How to fix it', '怎么修', `<p>${esc(p.fix.en)}</p>${cta}`, `<p>${esc(p.fix.zh)}</p>${cta}`)}
+  ${relatedBlock('Related errors', '相关报错', related)}
   ${sec('FAQ', '常见问题', p.faq.map((f) => `<div class="qa"><p class="q">${esc(f.q.en)}</p><p class="a">${esc(f.a.en)}</p></div>`).join(''), p.faq.map((f) => `<div class="qa"><p class="q">${esc(f.q.zh)}</p><p class="a">${esc(f.a.zh)}</p></div>`).join(''))}
   `
   return shell({
-    title: p.title, description: p.description, path: `e/${p.slug}/`, jsonLd: faqJsonLd(p.faq), body,
+    title: p.title,
+    description: p.description,
+    path: `e/${p.slug}/`,
+    jsonLd: [faqJsonLd(p.faq), breadcrumbJsonLd(trail, `e/${p.slug}/`)],
+    body,
   })
 }
 
@@ -210,8 +274,19 @@ function runPage(p) {
   const qa = (lang) => p.faq
     .map((f) => `<div class="qa"><p class="q">${esc(f.q[lang])}</p><p class="a">${esc(f.a[lang])}</p></div>`)
     .join('')
+  const bySlug = new Map(RUN_PAGES.map((entry) => [entry.slug, entry]))
+  const related = p.related.map((slug) => {
+    const target = bySlug.get(slug)
+    return { href: `/e/${slug}/`, exact: target.exact, note: target.label }
+  })
+  related.push({
+    href: '/e/missed-the-module-table/',
+    exact: 'client-modules: require("…") missed the module table',
+    note: { en: ' — or the other way round: dsh will not start at all', zh: ' —— 或者反过来：dsh 根本起不来' },
+  })
   const body = `
   <header class="hero slim">
+    ${crumbs([{ name: 'run failures', href: '/#run-failures' }, { name: p.slug }])}
     <p class="kicker">DeepSeek Harness · run failure</p>
     <h1>${esc(p.title)}</h1>
     <p class="errstring"><code>${esc(p.exact)}</code></p>
@@ -220,10 +295,15 @@ function runPage(p) {
   ${sec('Why it happens', '根因', `<p>${esc(p.cause.en)}</p>`, `<p>${esc(p.cause.zh)}</p>`)}
   ${sec('How to fix it', '怎么修', `${steps(p.fix.en)}${cta}`, `${steps(p.fix.zh)}${cta}`)}
   ${sec('Is this my plugin’s fault?', '这是我的插件引起的吗？', `<p>${esc(p.plugin.en)}</p>`, `<p>${esc(p.plugin.zh)}</p>`)}
+  ${relatedBlock('Related failures', '相关失败', related)}
   ${sec('FAQ', '常见问题', qa('en'), qa('zh'))}
   `
   return shell({
-    title: p.title, description: p.description, path: `e/${p.slug}/`, jsonLd: faqJsonLd(p.faq), body,
+    title: p.title,
+    description: p.description,
+    path: `e/${p.slug}/`,
+    jsonLd: [faqJsonLd(p.faq), breadcrumbJsonLd([{ name: 'run failures', href: '/#run-failures' }, { name: p.slug }], `e/${p.slug}/`)],
+    body,
   })
 }
 
@@ -261,8 +341,10 @@ function modulePage(entry, baseName, seeds) {
   const caseHtml = cases.map((c) => `<div class="kf-case"><span class="kf-repo">${esc(c.repo)}</span>${c.note ? `<span class="kf-note">${t(` — ${esc(c.noteEn ?? c.note)}`, ` —— ${esc(c.note)}`)}</span>` : ''}${c.url ? `<a class="kf-url" href="${esc(c.url)}" rel="noopener" target="_blank">${esc(c.url)}</a>` : ''}</div>`).join('')
 
   const cta = ctaFor(`client-modules: require("${baseName}") missed the module table`)
+  const trail = [{ name: 'modules', href: '/#modules' }, { name: baseName }]
   const body = `
   <header class="hero slim">
+    ${crumbs(trail)}
     <p class="kicker">DeepSeek Harness · module reference</p>
     <h1><code>${esc(baseName)}</code></h1>
     ${b('<p class="lead">Lifecycle of this module across published shells, and the known fix when a plugin requires it.</p>', '<p class="lead">该模块在各已发布 shell 上的生命周期，以及插件 require 它时的已知修法。</p>')}
@@ -271,10 +353,24 @@ function modulePage(entry, baseName, seeds) {
   ${secShared('Status', '状态', `<p class="mstatus">${esc(status)}</p>`)}
   <section class="e-sec"><h2>${t('Known fix', '已知修法')}</h2><div class="knownfix">${b(`<div class="kf-fix">${esc(fixEn)}</div>`, `<div class="kf-fix">${esc(fix)}</div>`)}${caseHtml}</div></section>
   ${cta}
+  ${moduleLinks(baseName)}
   `
   return shell({
-    title: `${baseName} — dsh module history & fix`, description: `Lifecycle of ${baseName} across dsh shells and the known fix when a plugin requires it.`, path: `m/${baseName}/`, jsonLd: moduleFaqJsonLd(baseName, fixEn), body,
+    title: `${baseName} — dsh module history & fix`,
+    description: `Lifecycle of ${baseName} across dsh shells and the known fix when a plugin requires it.`,
+    path: `m/${baseName}/`,
+    jsonLd: [moduleFaqJsonLd(baseName, fixEn), breadcrumbJsonLd(trail, `m/${baseName}/`)],
+    body,
   })
+}
+
+/** A module page's exit ramps: the error it causes, and the other failure branch. */
+function moduleLinks() {
+  const items = [
+    { href: '/e/missed-the-module-table/', exact: 'client-modules: require("…") missed the module table', note: { en: ' — the error a plugin gets when it requires a module the shell lacks', zh: ' —— 插件 require 一个 shell 没有的模块时得到的报错' } },
+    { href: '/e/provider-transport/', exact: 'DeepSeek API request to https://api.deepseek.com failed', note: { en: ' — dsh loads fine and a run still dies: a different problem', zh: ' —— dsh 加载正常但 run 挂了：完全另一类问题' } },
+  ]
+  return relatedBlock('What it breaks', '它会导致什么', items)
 }
 
 /**
@@ -321,8 +417,10 @@ function genericModulePage(name, count, seeds) {
   const timeline = `<div class="timeline"><code class="spec">${esc(name)}</code><div class="track ${track}"></div><span class="tlabel">${label}</span></div>`
   const eco = `<div class="ecosystem">${t(`${count} plugin(s) ecosystem-wide hit the same module`, `全生态 ${count} 个插件踩了同一个模块`)}</div>`
   const cta = ctaFor(`client-modules: require("${name}") missed the module table`)
+  const trail = [{ name: 'modules', href: '/#modules' }, { name }]
   const body = `
   <header class="hero slim">
+    ${crumbs(trail)}
     <p class="kicker">DeepSeek Harness · module reference</p>
     <h1><code>${esc(name)}</code></h1>
     ${b('<p class="lead">A package plugins require but dsh never ships in its module table — the browser half cannot resolve it.</p>', '<p class="lead">插件会 require、但 dsh 从未放进模块表的包——浏览器端无法解析它。</p>')}
@@ -331,12 +429,15 @@ function genericModulePage(name, count, seeds) {
   ${secShared('Ecosystem', '生态', eco)}
   ${sec('Why it breaks', '为什么崩', '<p>dsh resolves require() only against the module table baked into each shell build plus registered plugin factories — never against node_modules. Node builtins (stream / buffer / fs / util / events …) and most npm packages are therefore never resolvable from a plugin’s client bundle.</p>', '<p>dsh 的 require() 只对照烘焙进每个 shell 构建的模块表加已注册的插件工厂解析——从不查 node_modules。所以 Node 内置模块（stream / buffer / fs / util / events …）和大多数 npm 包在插件的 client bundle 里永远解析不了。</p>')}
   ${sec('How to fix it', '怎么修', `<p>${GENERIC_FIX_EN}</p>${cta}`, `<p>${GENERIC_FIX_ZH}</p>${cta}`)}
+  ${moduleLinks()}
   ${sec('FAQ', '常见问题', `<div class="qa"><p class="q">Why does require("${esc(name)}") crash in dsh but not in Node?</p><p class="a">dsh’s client bundles run in the browser and resolve against the shell module table, not node_modules. Node-only packages can never load there unless the plugin bundles them.</p></div>`, `<div class="qa"><p class="q">为什么 require("${esc(name)}") 在 dsh 里崩、在 Node 里不崩？</p><p class="a">dsh 的 client bundle 跑在浏览器里，对照 shell 模块表解析、不查 node_modules。纯 Node 包只有被打进插件自身才能在那里加载。</p></div>`)}
   `
   return shell({
     title: `${name} — not in any dsh module table (${count} plugins hit it)`,
     description: `${count} plugins ecosystem-wide require ${name}, which dsh never ships in its module table. What it means and how to fix it.`,
-    path: `m/${name}/`, jsonLd: moduleFaqJsonLd(name, GENERIC_FIX_EN), body,
+    path: `m/${name}/`,
+    jsonLd: [moduleFaqJsonLd(name, GENERIC_FIX_EN), breadcrumbJsonLd(trail, `m/${name}/`)],
+    body,
   })
 }
 

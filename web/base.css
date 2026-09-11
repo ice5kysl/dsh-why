@@ -291,3 +291,17 @@ html[data-lang="en"] .zh-only { display: none !important; }
 .runfix { margin: 0 0 4px; padding-left: 22px; }
 .runfix li { margin: 0 0 8px; font: 400 14.5px/1.65 var(--sans); color: var(--fg-2); }
 .runfix li:last-child { margin-bottom: 0; }
+
+/* interlinking: the topic pages were leaves, so the trail and the related list
+   are what turn 30 pages into a crawlable cluster */
+.crumbs { margin: 0 0 14px; font: 400 13px var(--mono); color: var(--fg-4); }
+.crumbs a { color: var(--fg-3); }
+.crumbs a:hover { color: var(--accent); }
+.crumbs .sep { margin: 0 8px; color: var(--fg-4); }
+.crumbs span { color: var(--fg-2); }
+.e-sec .rel { list-style: none; margin: 0; padding: 0; }
+.e-sec .rel li { margin: 0 0 12px; padding-left: 0; }
+.e-sec .rel a code { font-size: 13.5px; }
+.e-sec .rel a { text-decoration: none; }
+.e-sec .rel a:hover code { color: var(--accent); }
+.e-sec .rel .rel-note { display: block; margin-top: 3px; font: 400 13.5px/1.6 var(--sans); color: var(--fg-3); }

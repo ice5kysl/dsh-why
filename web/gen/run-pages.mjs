@@ -311,3 +311,48 @@ export const RUN_PAGES = [
     ],
   },
 ]
+
+/**
+ * Short human label per class, and its related classes.
+ *
+ * The grouping is measured, not guessed. Across a 2,006-turn corpus the failures
+ * split into two families that need opposite advice:
+ *
+ *   network family       transport 67 + server 3 + timeout 2 = 72 of 84
+ *                        → waiting and retrying is correct
+ *   configuration family auth 3 + missing-credential 3 + pricing 2
+ *                        + model-unavailable 2 + quota 2 = 12 of 84
+ *                        → retrying can never help; something must be configured
+ *
+ * Within a family the classes are also the ones users confuse: 401 versus "no key
+ * found" (nothing was sent versus what was sent was rejected), and 502 versus
+ * transport (the exchange completed versus never did). Those distinctions are
+ * already spelled out in each page's FAQ, so linking them is the natural next
+ * click rather than padding.
+ */
+const LABELS = {
+  'provider-transport': { en: 'the API call never completed', zh: 'API 请求根本没完成' },
+  'provider-auth-401': { en: 'the key was rejected', zh: 'key 被拒绝' },
+  'provider-missing-credential': { en: 'no key for this route', zh: '这条路由没配 key' },
+  'provider-quota': { en: 'out of credit', zh: '余额不足' },
+  'provider-pricing': { en: 'no pricing for this model', zh: '这个模型没配计价' },
+  'model-unavailable': { en: 'the route cannot serve it', zh: '路由不提供这个模型' },
+  'provider-server': { en: 'a 5xx from the provider', zh: 'provider 返回 5xx' },
+  'provider-timeout': { en: 'the stream went idle', zh: '响应流空闲超时' },
+}
+
+const RELATED = {
+  'provider-transport': ['provider-server', 'provider-timeout'],
+  'provider-server': ['provider-transport', 'provider-timeout'],
+  'provider-timeout': ['provider-transport', 'provider-server'],
+  'provider-auth-401': ['provider-missing-credential', 'provider-pricing'],
+  'provider-missing-credential': ['provider-auth-401', 'provider-pricing'],
+  'provider-pricing': ['model-unavailable', 'provider-auth-401'],
+  'model-unavailable': ['provider-pricing', 'provider-auth-401'],
+  'provider-quota': ['provider-pricing', 'provider-auth-401'],
+}
+
+for (const page of RUN_PAGES) {
+  page.label = LABELS[page.slug]
+  page.related = RELATED[page.slug] ?? []
+}

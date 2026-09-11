@@ -74,9 +74,9 @@
     <p class="privacy" data-en="Diagnosed entirely in your browser. Data (module tables, known fixes, compat matrix) is fetched from dsh-insights.com."
        data-zh="全程在你的浏览器里诊断。数据（模块表、已知修法、兼容矩阵）取自 dsh-insights.com。"></p>
 
-    <section class="ref" id="run-failures" aria-label="reference">
+    <section class="ref" id="reference" aria-label="reference">
       <h2 data-en="Error reference" data-zh="错误参考">Error reference</h2>
-      <div class="ref-group">
+      <div class="ref-group" id="loader-errors">
         <h3 data-en="Loader errors" data-zh="加载器报错">Loader errors</h3>
         <ul>
           <li><a href="/e/missed-the-module-table/"><code>missed the module table</code></a></li>
@@ -85,7 +85,7 @@
           <li><a href="/e/failed-to-load-plugins/"><code>Failed to load plugins</code></a></li>
         </ul>
       </div>
-      <div class="ref-group">
+      <div class="ref-group" id="run-failures">
         <h3 data-en="Run failures — dsh-why run" data-zh="运行失败 —— dsh-why run">Run failures — dsh-why run</h3>
         <!-- Static fallback, kept identical to RUN_PAGES by tests/site.test.mjs.
              GitHub Pages caches web/app.mjs for 10 minutes, so a visitor can run a
@@ -102,7 +102,7 @@
           <li><a href="/e/provider-timeout/"><code>provider-timeout</code></a></li>
         </ul>
       </div>
-      <div class="ref-group">
+      <div class="ref-group" id="modules">
         <h3 data-en="Modules" data-zh="模块">Modules</h3>
         <ul id="ref-modules"></ul>
       </div>
