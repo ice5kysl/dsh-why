@@ -31,7 +31,7 @@ jobs:
       # Assemble a clean, minimal artifact — authored files + generated pages, no .git or tests.
       - run: |
           mkdir -p _site
-          cp -r index.html web lib e m llms.txt robots.txt sitemap.xml KEY.txt _site/
+          cp -r index.html web lib e m guide llms.txt robots.txt sitemap.xml KEY.txt _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

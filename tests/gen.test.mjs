@@ -334,3 +334,24 @@ describe('the /guide/ page (the orientation layer)', () => {
     assert.match(readFileSync(join(out, 'llms.txt'), 'utf8'), /https:\/\/dsh-why\.com\/guide\//)
   })
 })
+
+describe('the deploy artifact includes everything the generator writes', () => {
+  it('pages.yml copies every top-level directory the generator emits', () => {
+    // The page set is generated; the deploy list is hand-written. They drifted
+    // once already: /guide/ shipped in the sitemap while never being copied into
+    // _site, so the site advertised a 404.
+    const workflow = readFileSync(join(new URL('..', import.meta.url).pathname, '.github', 'workflows', 'pages.yml'), 'utf8')
+    const copyLine = /cp -r ([^\n]+?) _site\//.exec(workflow)
+    assert.ok(copyLine, 'pages.yml has no cp -r … _site/ line')
+    const copied = new Set(copyLine[1].split(/\s+/).filter(Boolean))
+    const { generate: gen } = { generate }
+    const written = gen(mkdtempSync(join(tmpdir(), `dsh-why-artifact-${Date.now()}-`)))
+    const topLevel = new Set(written.map((p) => p.replace(/^\//, '').split('/')[0]))
+    for (const dir of topLevel) {
+      assert.equal(copied.has(dir), true, `pages.yml does not copy ${dir}/ — it will 404 in production`)
+    }
+    for (const file of ['index.html', 'llms.txt', 'sitemap.xml']) {
+      assert.equal(copied.has(file), true, `pages.yml does not copy ${file}`)
+    }
+  })
+})
