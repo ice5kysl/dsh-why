@@ -436,15 +436,21 @@ describe('resolveSeedVersion', () => {
     assert.deepEqual(resolveSeedVersion('0.1.2-rc.1', versions), { version: '0.1.2-rc.1', source: 'exact' })
   })
 
+  // The remaining cases run against a SYNTHETIC list on purpose. The bundled
+  // table is refreshed from upstream automatically now (scripts/rulebase.mjs), so
+  // any assertion that names its newest version starts rotting the moment a new
+  // shell ships. These tests are about the RULE; the snapshot is not the subject.
+  const fixture = ['1.0.0', '1.2.0', '2.0.0']
+
   it('in-range gap → nearest older table', () => {
-    assert.deepEqual(resolveSeedVersion('0.1.3-alpha.1', versions), { version: '0.1.2-rc.1', source: 'approx-lower' })
+    assert.deepEqual(resolveSeedVersion('1.1.0', fixture), { version: '1.0.0', source: 'approx-lower' })
   })
 
   it('shell newer than every known table → snapshot-older caveat', () => {
-    assert.deepEqual(resolveSeedVersion('9.9.9', versions), { version: '0.1.5-alpha.1', source: 'snapshot-older' })
+    assert.deepEqual(resolveSeedVersion('9.9.9', fixture), { version: '2.0.0', source: 'snapshot-older' })
   })
 
   it('shell older than every known table → unavailable (R1 skipped)', () => {
-    assert.deepEqual(resolveSeedVersion('0.0.0', versions), { version: null, source: 'unavailable' })
+    assert.deepEqual(resolveSeedVersion('0.0.0', fixture), { version: null, source: 'unavailable' })
   })
 })

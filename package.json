@@ -45,6 +45,8 @@
     "url": "https://github.com/ice5kysl/dsh-why/issues"
   },
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "rulebase:check": "node scripts/rulebase.mjs check",
+    "rulebase:sync": "node scripts/rulebase.mjs sync"
   }
 }

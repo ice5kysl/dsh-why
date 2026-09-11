@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-09T07:19:29.369Z",
+  "generatedAt": "2026-09-10T23:56:02.540Z",
   "pkg": "@deepseek-ai/dsh-web-frontend",
   "note": "dsh shell（dsh-web-frontend）各版本烘焙的客户端模块表 seed 词；提取器严格模式，形态不符的版本记入 failed 不产出部分表。Seed words baked into each published shell build; extraction is strict — shape deviations land in failed, never partial tables.",
   "distTags": {
     "latest": "0.0.1-rc.5",
-    "next": "0.1.2-rc.1",
-    "alpha": "0.1.5-alpha.1"
+    "alpha": "0.1.5-alpha.2",
+    "next": "0.1.5-rc.2"
   },
   "versions": {
     "0.0.1-rc.5": [
@@ -156,6 +156,39 @@
       "@deepseek-ai/dsh-client-ui-primitives"
     ],
     "0.1.5-alpha.1": [
+      "react",
+      "react/jsx-runtime",
+      "react-dom",
+      "react-dom/client",
+      "@deepseek-ai/cordis",
+      "@deepseek-ai/dsh-client-store",
+      "@deepseek-ai/dsh-client-ui-slots",
+      "@deepseek-ai/dsh-client-ui-primitives",
+      "@deepseek-ai/dsh-client-ui-dockkit"
+    ],
+    "0.1.5-alpha.2": [
+      "react",
+      "react/jsx-runtime",
+      "react-dom",
+      "react-dom/client",
+      "@deepseek-ai/cordis",
+      "@deepseek-ai/dsh-client-store",
+      "@deepseek-ai/dsh-client-ui-slots",
+      "@deepseek-ai/dsh-client-ui-primitives",
+      "@deepseek-ai/dsh-client-ui-dockkit"
+    ],
+    "0.1.5-rc.1": [
+      "react",
+      "react/jsx-runtime",
+      "react-dom",
+      "react-dom/client",
+      "@deepseek-ai/cordis",
+      "@deepseek-ai/dsh-client-store",
+      "@deepseek-ai/dsh-client-ui-slots",
+      "@deepseek-ai/dsh-client-ui-primitives",
+      "@deepseek-ai/dsh-client-ui-dockkit"
+    ],
+    "0.1.5-rc.2": [
       "react",
       "react/jsx-runtime",
       "react-dom",

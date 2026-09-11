@@ -1,0 +1,101 @@
+name: Rule base freshness
+
+# The tool's value is a snapshot (lib/data/shell-seeds.json) of every shell
+# build's client module table, while dsh ships several times a day. Measured on
+# 2026-09-11 the shipped snapshot was three shell versions behind, and the two
+# versions users actually install (`dsh@latest`, `dsh@next`) were not in it.
+#
+# A stale table does not crash — it starts calling modules "missing" that a newer
+# shell provides. This job is the thing that watches for that.
+#
+# It runs daily, syncs from dsh-insights, and opens a PR when the data moved. It
+# fails the run only when a HUMAN is needed: upstream extraction broke, or even
+# after syncing the shell users install is still not covered.
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Capture the exit code instead of failing the step: 1 means "alarms remain
+      # even after syncing", which is a human problem, handled in a later step.
+      - name: Sync the rule base from upstream
+        id: sync
+        run: |
+          node scripts/rulebase.mjs sync
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Did the data move?
+        id: change
+        run: |
+          if git diff --quiet -- lib/data; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            node scripts/rulebase.mjs check --json > /tmp/rulebase.json || true
+          fi
+
+      # A refreshed table changes verdicts, so it has to pass the same suite the
+      # release does before anyone merges it.
+      - name: The refreshed table must pass the suite
+        if: steps.change.outputs.changed == 'true'
+        run: npm test
+
+      - name: Open a refresh PR
+        if: steps.change.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh pr list --state open --head rulebase/refresh --json number --jq 'length' | grep -qv '^0$'; then
+            echo "a refresh PR is already open — leaving it for review"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b rulebase/refresh
+          git add lib/data
+          git commit \
+            -m "chore(rulebase): refresh the shell module table from upstream" \
+            -m "Automated: dsh-insights regenerated the per-shell client module table and the bundled snapshot had fallen behind. Run by .github/workflows/rulebase.yml. A stale table does not crash — it reports modules as missing that a newer shell provides."
+          git push -u origin rulebase/refresh --force
+          {
+            echo "Automated refresh of the bundled rule base from dsh-insights."
+            echo
+            echo "A stale table does not crash — it reports modules as missing that a newer"
+            echo "shell provides — so this is the mechanism that keeps the diagnoses honest."
+            echo
+            echo '```json'
+            cat /tmp/rulebase.json 2>/dev/null || echo '(no detail)'
+            echo '```'
+            echo
+            echo "The full suite passed on the refreshed table before this PR was opened."
+          } > /tmp/pr-body.md
+          gh pr create \
+            --title "chore(rulebase): refresh the shell module table from upstream" \
+            --body-file /tmp/pr-body.md \
+            --base main --head rulebase/refresh
+
+      # Alarm path: nothing to commit, or the sync could not fix what is broken.
+      - name: Alarm — a human is needed
+        if: steps.sync.outputs.code != '0'
+        run: |
+          echo "::error::the rule base could not be brought up to date automatically — see the check output above"
+          node scripts/rulebase.mjs check || true
+          exit 1
