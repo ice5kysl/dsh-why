@@ -236,25 +236,30 @@ function boot() {
     try { $('input').value = decodeURIComponent(q.get('e')) } catch { $('input').value = q.get('e') }
   }
 
-  // the reference index's module list is generated (it grows with the matrix)
+  // the reference index is generated (it grows with the matrix and the rule set)
   fetch('web/ref-pages.json')
     .then((r) => r.json())
-    .then(({ modules }) => {
-      const ul = $('ref-modules')
-      if (!ul || !modules?.length) return
-      ul.textContent = ''
-      for (const m of modules) {
-        const li = document.createElement('li')
-        const a = document.createElement('a')
-        a.href = `/m/${m.slug}/`
-        const code = document.createElement('code')
-        code.textContent = m.slug
-        a.appendChild(code)
-        li.appendChild(a)
-        ul.appendChild(li)
+    .then(({ modules, runs }) => {
+      for (const [id, entries, href, label] of [
+        ['ref-modules', modules, (m) => `/m/${m.slug}/`, (m) => m.slug],
+        ['ref-runs', runs, (r) => `/e/${r.slug}/`, (r) => r.slug],
+      ]) {
+        const ul = $(id)
+        if (!ul || !entries?.length) continue
+        ul.textContent = ''
+        for (const entry of entries) {
+          const li = document.createElement('li')
+          const a = document.createElement('a')
+          a.href = href(entry)
+          const code = document.createElement('code')
+          code.textContent = label(entry)
+          a.appendChild(code)
+          li.appendChild(a)
+          ul.appendChild(li)
+        }
       }
     })
-    .catch(() => { /* the static error links remain; modules fall back to the sitemap */ })
+    .catch(() => { /* the static error links remain; the generated groups fall back to the sitemap */ })
 
   loadData()
     .then((data) => {

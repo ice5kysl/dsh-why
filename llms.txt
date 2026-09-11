@@ -19,27 +19,40 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. `npx dsh-why` reads your i
 - https://dsh-why.com/e/bundle-script-failed/ — `client-modules: bundle script … failed to load`
 - https://dsh-why.com/e/failed-to-load-plugins/ — `Failed to load plugins`
 
+## Run failure reference (a run that booted fine and then died)
+- https://dsh-why.com/e/provider-transport/ — `DeepSeek API request to https://api.deepseek.com failed`
+- https://dsh-why.com/e/provider-auth-401/ — `401: The API Key appears to be invalid or may have expired`
+- https://dsh-why.com/e/provider-missing-credential/ — `llm-deepseek: no API key for provider route "deepseek-official"`
+- https://dsh-why.com/e/provider-quota/ — `Insufficient Balance`
+- https://dsh-why.com/e/provider-pricing/ — `503 "pricing not configured for provider/model"`
+- https://dsh-why.com/e/model-unavailable/ — `400 "unsupported model"`
+- https://dsh-why.com/e/provider-server/ — `502 status code (no body)`
+- https://dsh-why.com/e/provider-timeout/ — `DeepSeek stream idle timeout after 300000ms`
+
 ## Module reference (per-shell lifecycle)
 - https://dsh-why.com/m/dsh-client-runtime/ — @deepseek-ai/dsh-client-runtime (never-seeded（15 个已发布 shell 的模块表都没有它）)
 - https://dsh-why.com/m/dsh-client-ui-attachment/ — @deepseek-ai/dsh-client-ui-attachment (removed-from-seed 0.1.0-rc.8——但仍是 lazy 图行：bundle 随 combo 批次注册工厂，require 通常仍可解析（非崩溃；时序无硬保证）)
 - https://dsh-why.com/m/dsh-client-web-react/ — @deepseek-ai/dsh-client-web-react (removed-in 0.1.0-rc.8)
 - https://dsh-why.com/m/dsh-client-schema-form/ — @deepseek-ai/dsh-client-schema-form (removed-in 0.1.0-rc.8)
-- https://dsh-why.com/m/stream/ — stream (not in any shell module table)
-- https://dsh-why.com/m/buffer/ — buffer (not in any shell module table)
-- https://dsh-why.com/m/util/ — util (not in any shell module table)
-- https://dsh-why.com/m/fs/ — fs (not in any shell module table)
-- https://dsh-why.com/m/events/ — events (not in any shell module table)
-- https://dsh-why.com/m/domino/ — @mixmark-io/domino (not in any shell module table)
-- https://dsh-why.com/m/url/ — url (not in any shell module table)
-- https://dsh-why.com/m/zlib/ — zlib (not in any shell module table)
-- https://dsh-why.com/m/assert/ — assert (not in any shell module table)
-- https://dsh-why.com/m/process/ — process (not in any shell module table)
-- https://dsh-why.com/m/path/ — path (not in any shell module table)
-- https://dsh-why.com/m/esm-env/ — esm-env (not in any shell module table)
-- https://dsh-why.com/m/dsh-mcp-manager/ — @wanghailong0419/dsh-mcp-manager (not in any shell module table)
+- https://dsh-why.com/m/assert/ — assert (carried over from a previous live build)
+- https://dsh-why.com/m/buffer/ — buffer (carried over from a previous live build)
+- https://dsh-why.com/m/domino/ — domino (carried over from a previous live build)
+- https://dsh-why.com/m/dsh-mcp-manager/ — dsh-mcp-manager (carried over from a previous live build)
+- https://dsh-why.com/m/esm-env/ — esm-env (carried over from a previous live build)
+- https://dsh-why.com/m/events/ — events (carried over from a previous live build)
+- https://dsh-why.com/m/fs/ — fs (carried over from a previous live build)
+- https://dsh-why.com/m/path/ — path (carried over from a previous live build)
+- https://dsh-why.com/m/process/ — process (carried over from a previous live build)
+- https://dsh-why.com/m/stream/ — stream (carried over from a previous live build)
+- https://dsh-why.com/m/url/ — url (carried over from a previous live build)
+- https://dsh-why.com/m/util/ — util (carried over from a previous live build)
+- https://dsh-why.com/m/zlib/ — zlib (carried over from a previous live build)
 
 ## The CLI
 - `npx dsh-why` — diagnose the current environment
 - `npx dsh-why --json` — machine-readable (CI / an LLM)
 - `npx dsh-why --offline` — bundled rule base only
 - `npx dsh-why --error "…"` — diagnose a pasted error (or pipe via stdin)
+- `npx dsh-why run` — attribute your latest run from the local session log
+- `npx dsh-why run --all` — health view: failure mix, baseline, and incident days
+- `npx dsh-why run --json` — machine-readable run report

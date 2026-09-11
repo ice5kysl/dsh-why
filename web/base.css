@@ -283,3 +283,8 @@
 /* ── bilingual blocks (CSS dual-language: both in the DOM, one shown) ────── */
 html[data-lang="zh"] .en-only { display: none !important; }
 html[data-lang="en"] .zh-only { display: none !important; }
+
+/* run-failure pages: the recovery steps are ordered, so they are a real list */
+.runfix { margin: 0 0 4px; padding-left: 22px; }
+.runfix li { margin: 0 0 8px; font: 400 14.5px/1.65 var(--sans); color: var(--fg-2); }
+.runfix li:last-child { margin-bottom: 0; }

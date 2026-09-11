@@ -20,9 +20,12 @@
  * @module dsh-why/web/gen/e
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+
+import { FAILURE_CLASSES } from '../../lib/runrules.mjs'
+import { RUN_PAGES } from './run-pages.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const ORIGIN = 'https://dsh-why.com'
@@ -195,6 +198,54 @@ function errorPage(p) {
   })
 }
 
+/**
+ * A run-failure page. Unlike the startup pages there is no paste-box deep link:
+ * the web tool diagnoses loader errors, and a run failure is read from the local
+ * session log by `dsh-why run`. The CTA points at that command instead of
+ * pretending a URL can do the work.
+ */
+function runPage(p) {
+  const cta = `<div class="cta"><code>npx dsh-why run</code> <a href="${ORIGIN}/#run">${t('what else it can tell you', '它还能告诉你什么')}</a></div>`
+  const steps = (items) => `<ol class="runfix">${items.map((item) => `<li>${esc(item)}</li>`).join('')}</ol>`
+  const qa = (lang) => p.faq
+    .map((f) => `<div class="qa"><p class="q">${esc(f.q[lang])}</p><p class="a">${esc(f.a[lang])}</p></div>`)
+    .join('')
+  const body = `
+  <header class="hero slim">
+    <p class="kicker">DeepSeek Harness · run failure</p>
+    <h1>${esc(p.title)}</h1>
+    <p class="errstring"><code>${esc(p.exact)}</code></p>
+    ${b(`<p class="lead">${esc(p.lead.en)}</p>`, `<p class="lead">${esc(p.lead.zh)}</p>`)}
+  </header>
+  ${sec('Why it happens', '根因', `<p>${esc(p.cause.en)}</p>`, `<p>${esc(p.cause.zh)}</p>`)}
+  ${sec('How to fix it', '怎么修', `${steps(p.fix.en)}${cta}`, `${steps(p.fix.zh)}${cta}`)}
+  ${sec('Is this my plugin’s fault?', '这是我的插件引起的吗？', `<p>${esc(p.plugin.en)}</p>`, `<p>${esc(p.plugin.zh)}</p>`)}
+  ${sec('FAQ', '常见问题', qa('en'), qa('zh'))}
+  `
+  return shell({
+    title: p.title, description: p.description, path: `e/${p.slug}/`, jsonLd: faqJsonLd(p.faq), body,
+  })
+}
+
+/**
+ * The run pages and the CLI must agree on slugs in BOTH directions: a page the
+ * classifier cannot produce is dead weight, and a class with no page is a 404
+ * that the report already printed. Fail the build rather than ship either.
+ *
+ * @param {object} [classes] FAILURE_CLASSES-shaped map (injectable for tests)
+ * @param {object[]} [pages] RUN_PAGES-shaped list (injectable for tests)
+ */
+export function assertRunPagesMatchClassifier(classes = FAILURE_CLASSES, pages = RUN_PAGES) {
+  const classifier = Object.values(classes).map((c) => c.slug).filter(Boolean).sort()
+  const slugs = pages.map((p) => p.slug).sort()
+  const missing = classifier.filter((slug) => !slugs.includes(slug))
+  const extra = slugs.filter((slug) => !classifier.includes(slug))
+  if (missing.length || extra.length) {
+    throw new Error(`run topic pages drift from the classifier — no page: ${missing.join(', ') || 'none'}; no class: ${extra.join(', ') || 'none'}`)
+  }
+  return { pages: slugs.length }
+}
+
 function modulePage(entry, baseName, seeds) {
   const h = moduleHistoryFor(baseName, seeds)
   const status = entry.status ?? ''
@@ -295,11 +346,19 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
   const fixes = JSON.parse(read('lib/data/fixes.json'))
   const written = []
   const moduleIndex = [] // { slug, name } — the landing page's reference list
+  assertRunPagesMatchClassifier()
 
   for (const p of ERROR_PAGES) {
     const dir = join(outRoot, 'e', p.slug)
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'index.html'), errorPage(p))
+    written.push(`e/${p.slug}/`)
+  }
+
+  for (const p of RUN_PAGES) {
+    const dir = join(outRoot, 'e', p.slug)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'index.html'), runPage(p))
     written.push(`e/${p.slug}/`)
   }
 
@@ -323,6 +382,22 @@ export function generate(outRoot = ROOT, { compatObserved = null } = {}) {
       written.push(`m/${slug}/`)
       moduleIndex.push({ slug, name, note: 'not in any shell module table' })
     }
+  } else {
+    // Long-tail pages come from live ecosystem data. When that fetch fails — an
+    // offline build, a CI hiccup — the pages already on disk are still linked and
+    // still served, so their URLs must stay in the inventory. Dropping them would
+    // silently ship a smaller sitemap for content that exists.
+    const emitted = new Set(written)
+    let carried = 0
+    for (const slug of readdirSync(join(outRoot, 'm'))) {
+      const rel = `m/${slug}/`
+      if (emitted.has(rel)) continue
+      if (!existsSync(join(outRoot, rel, 'index.html'))) continue
+      written.push(rel)
+      moduleIndex.push({ slug, name: slug, note: 'carried over from a previous live build' })
+      carried++
+    }
+    if (carried) console.log(`dsh-why/gen: no live data — carried over ${carried} existing long-tail page(s) into the inventory`)
   }
 
   emitInventory(outRoot, written, moduleIndex)
@@ -342,6 +417,7 @@ function emitInventory(outRoot, written, moduleIndex) {
 
   // llms.txt (the AI-facing directory, bilingual note)
   const errLines = ERROR_PAGES.map((p) => `- ${ORIGIN}/e/${p.slug}/ — \`${p.exact}\``).join('\n')
+  const runLines = RUN_PAGES.map((p) => `- ${ORIGIN}/e/${p.slug}/ — \`${p.exact}\``).join('\n')
   const modLines = moduleIndex.map((m) => `- ${ORIGIN}/m/${m.slug}/ — ${m.name}${m.note ? ` (${m.note})` : ''}`).join('\n')
   writeFileSync(join(outRoot, 'llms.txt'), `# dsh-why
 
@@ -361,6 +437,9 @@ Diagnose DeepSeek Harness (dsh) plugin load failures. \`npx dsh-why\` reads your
 ## Error reference (the exact string is the title)
 ${errLines}
 
+## Run failure reference (a run that booted fine and then died)
+${runLines}
+
 ## Module reference (per-shell lifecycle)
 ${modLines}
 
@@ -369,11 +448,17 @@ ${modLines}
 - \`npx dsh-why --json\` — machine-readable (CI / an LLM)
 - \`npx dsh-why --offline\` — bundled rule base only
 - \`npx dsh-why --error "…"\` — diagnose a pasted error (or pipe via stdin)
+- \`npx dsh-why run\` — attribute your latest run from the local session log
+- \`npx dsh-why run --all\` — health view: failure mix, baseline, and incident days
+- \`npx dsh-why run --json\` — machine-readable run report
 `)
 
   // the landing page's reference list (module group renders from this)
   mkdirSync(join(outRoot, 'web'), { recursive: true })
-  writeFileSync(join(outRoot, 'web', 'ref-pages.json'), JSON.stringify({ modules: moduleIndex }))
+  writeFileSync(join(outRoot, 'web', 'ref-pages.json'), JSON.stringify({
+    modules: moduleIndex,
+    runs: RUN_PAGES.map((p) => ({ slug: p.slug, exact: p.exact })),
+  }))
 }
 
 // direct execution only (not when imported by the test)

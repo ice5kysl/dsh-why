@@ -116,3 +116,91 @@ describe('long-tail module pages (compat-observed)', () => {
     assert.match(html, /\?e=client-modules%3A%20require\(%22stream%22\)/)
   })
 })
+
+describe('run-failure topic pages (dsh-why run)', () => {
+  it('emits one page per attributable failure class, exact string as the title', async () => {
+    const { FAILURE_CLASSES } = await import('../lib/runrules.mjs')
+    const { RUN_PAGES } = await import('../web/gen/run-pages.mjs')
+    const slugs = Object.values(FAILURE_CLASSES).map((c) => c.slug).filter(Boolean).sort()
+    assert.deepEqual(RUN_PAGES.map((p) => p.slug).sort(), slugs)
+    for (const slug of slugs) {
+      const html = page(`e/${slug}`)
+      assert.match(html, new RegExp(`https://dsh-why\\.com/e/${slug}/`), `${slug} canonical`)
+      assert.match(html, /"@type":"FAQPage"/, `${slug} FAQ JSON-LD`)
+      assert.match(html, /en-only/)
+      assert.match(html, /zh-only/)
+    }
+  })
+
+  it('every topic URL the CLI prints resolves to a generated page (no 404 from a report)', async () => {
+    const { FAILURE_CLASSES } = await import('../lib/runrules.mjs')
+    for (const [name, meta] of Object.entries(FAILURE_CLASSES)) {
+      if (!meta.slug) continue // provider-unknown deliberately has no page
+      const url = `/e/${meta.slug}/`
+      assert.equal(existsSync(join(out, url.replace(/^\//, ''), 'index.html')), true, `${name} → ${url}`)
+    }
+    // and the one class with no page says so, rather than pointing somewhere wrong
+    assert.equal(FAILURE_CLASSES['provider-unknown'].slug, null)
+  })
+
+  it('tells the reader the fix steps and answers the plugin question explicitly', () => {
+    const html = page('e/provider-transport')
+    assert.match(html, /Re-run the turn/)
+    assert.match(html, /class="runfix"/)
+    assert.match(html, /Is this my plugin.s fault\?/)
+    assert.match(html, /不是。/) // the zh answer is in the DOM too
+  })
+
+  it('lists all eight run pages in the sitemap and llms.txt', () => {
+    const sitemap = readFileSync(join(out, 'sitemap.xml'), 'utf8')
+    const llms = readFileSync(join(out, 'llms.txt'), 'utf8')
+    assert.match(llms, /## Run failure reference/)
+    assert.match(llms, /npx dsh-why run --all/)
+    for (const slug of ['provider-transport', 'provider-auth-401', 'provider-missing-credential',
+      'provider-quota', 'provider-pricing', 'model-unavailable', 'provider-server', 'provider-timeout']) {
+      assert.match(sitemap, new RegExp(`https://dsh-why\\.com/e/${slug}/`), `${slug} in sitemap`)
+      assert.match(llms, new RegExp(`https://dsh-why\\.com/e/${slug}/`), `${slug} in llms.txt`)
+    }
+  })
+
+  it('publishes the run list for the landing page reference index', () => {
+    const ref = JSON.parse(readFileSync(join(out, 'web', 'ref-pages.json'), 'utf8'))
+    assert.equal(ref.runs.length, 8)
+    assert.equal(ref.runs[0].slug, 'provider-transport')
+    assert.match(ref.runs[0].exact, /api\.deepseek\.com/)
+  })
+
+  it('refuses to emit a page set that has drifted from the classifier', async () => {
+    const { assertRunPagesMatchClassifier } = await import('../web/gen/e.mjs')
+    const classes = { a: { slug: 'one' }, b: { slug: 'two' } }
+    // the real pair passes
+    assert.deepEqual(assertRunPagesMatchClassifier(classes, [{ slug: 'one' }, { slug: 'two' }]), { pages: 2 })
+    // a class with no page is a 404 the report already printed
+    assert.throws(() => assertRunPagesMatchClassifier(classes, [{ slug: 'one' }]), /no page: two/)
+    // a page no class can produce is dead weight
+    assert.throws(() => assertRunPagesMatchClassifier(classes, [{ slug: 'one' }, { slug: 'two' }, { slug: 'three' }]), /no class: three/)
+    // a slugless class (provider-unknown) must not demand a page
+    assert.deepEqual(assertRunPagesMatchClassifier({ a: { slug: 'one' }, x: { slug: null } }, [{ slug: 'one' }]), { pages: 1 })
+  })
+})
+
+describe('inventory does not shrink when live data is unavailable', () => {
+  it('carries previously generated long-tail pages into the sitemap', async () => {
+    const { generate } = await import('../web/gen/e.mjs')
+    const { mkdtempSync, writeFileSync, mkdirSync, readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { tmpdir } = await import('node:os')
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-why-carry-'))
+
+    // a page that only a live build would have produced
+    mkdirSync(join(dir, 'm', 'some-long-tail'), { recursive: true })
+    writeFileSync(join(dir, 'm', 'some-long-tail', 'index.html'), '<html></html>')
+
+    generate(dir) // no compatObserved: the offline path
+
+    const sitemap = readFileSync(join(dir, 'sitemap.xml'), 'utf8')
+    assert.match(sitemap, /https:\/\/dsh-why\.com\/m\/some-long-tail\//)
+    const ref = JSON.parse(readFileSync(join(dir, 'web', 'ref-pages.json'), 'utf8'))
+    assert.equal(ref.modules.some((m) => m.slug === 'some-long-tail'), true)
+  })
+})
