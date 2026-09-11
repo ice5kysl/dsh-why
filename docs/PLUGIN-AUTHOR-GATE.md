@@ -95,14 +95,21 @@ If the feature is essential, bundle the dependency into your plugin instead
 
 ## Why this is worth 30 seconds of your CI
 
-Measured on 2026-09-11 by running the gate against four popular published plugins
-(`dsh-cost-meter`, `dsh-vision-router`, `dsh-free-search`, `dsh-browser`):
-**zero false positives**. Three came back clean; one came back *conditional* —
-correctly, with the ecosystem case base noting that an earlier tool had misjudged
-that exact plugin as a crash, and that the misjudgement was later retracted.
+Measured on 2026-09-11 by running the gate against **13 popular published
+plugins** (including `dsh-better-sidebar`, `dsh-cost-meter`, `dsh-pocket`,
+`dsh-chat-import`, `dsh-permission-rules`, `dsh-vision-router`, `dsh-free-search`):
 
-That is the point: the gate is quiet on healthy plugins. It speaks up when an
-upstream change would break yours.
+- **zero false positives** — nine came back clean, and one came back *conditional*
+  correctly, with the ecosystem case base noting that an earlier tool had
+  misjudged that exact plugin as a crash and later retracted it;
+- the remaining four came back `3`, all of them for the honest reason: a fresh
+  clone whose bundle is not built yet (that is the `npm run build` step above);
+- **no plugin was found broken.** Published plugins work.
+
+That last point is the point. **This gate is quiet on healthy plugins. It is not a
+cleanup tool — it is a regression guard**, and the thing it guards against is
+upstream: dsh ships several times a day, and a module moving between shell builds
+is what takes a working plugin down.
 
 ## Badge
 
