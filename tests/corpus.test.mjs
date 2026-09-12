@@ -94,7 +94,7 @@ describe('runDiagnosis × crash corpus', () => {
     }
     const report = await runDiagnosis({ env: ENV, offline: false })
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
-    assert.deepEqual(r1.corpusHit, { sig: CRASH_SIG, count: 5, lastSeen: '2026-09-11T12:34:56Z' })
+    assert.deepEqual(r1.corpusHit, { sig: CRASH_SIG, count: 5, lastSeen: '2026-09-11T12:34:56Z', seeded: false })
     // --json consumers get the same object, so the hit is machine-readable
     assert.equal(JSON.parse(JSON.stringify(report)).findings.find((f) => f.corpusHit).corpusHit.count, 5)
 
@@ -115,6 +115,41 @@ describe('runDiagnosis × crash corpus', () => {
     assert.equal(r1.corpusHit, undefined)
     assert.doesNotMatch(renderText(report, 'en', '9.9.9', { color: false }), /Community corpus/)
     assert.doesNotMatch(renderText(report, 'zh', '9.9.9', { color: false }), /社区语料/)
+  })
+
+  it('a seed-only signature is a known pattern, never phrased as user reports', async () => {
+    // 冷启动种子（source='seed'）聚合后 count=0、seeded=true —— 绝不能说
+    // 「已见 N 例上报」，否则就是拿自己灌的语料冒充社区上报量。
+    const seededOnly = {
+      ...CORPUS,
+      totalReports: 0,
+      seededReports: 150,
+      signatures: [{
+        sig: CRASH_SIG,
+        category: 'module-missing',
+        count: 0,
+        seededCount: 12,
+        seeded: true,
+        plugins: ['fake-crash-plugin'],
+        shells: ['0.1.2-rc.1'],
+        firstSeen: '2026-09-12T03:43:34Z',
+        lastSeen: '2026-09-12T03:43:34Z',
+      }],
+    }
+    globalThis.fetch = async (url) => {
+      if (String(url).includes('crash-corpus')) return { ok: true, json: async () => seededOnly }
+      return { ok: false, status: 404, json: async () => null }
+    }
+    const report = await runDiagnosis({ env: ENV, offline: false })
+    const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
+    assert.deepEqual(r1.corpusHit, { sig: CRASH_SIG, count: 0, lastSeen: '2026-09-12T03:43:34Z', seeded: true })
+
+    const en = renderText(report, 'en', '9.9.9', { color: false })
+    assert.match(en, /Known crash pattern: measured in the upstream corpus, no user reports yet/)
+    assert.doesNotMatch(en, /report\(s\) of this exact crash/)
+    const zh = renderText(report, 'zh', '9.9.9', { color: false })
+    assert.match(zh, /已知崩溃模式：上游实测语料命中，暂无用户上报/)
+    assert.doesNotMatch(zh, /已见 \d+ 例上报/)
   })
 
   it('an unreachable corpus degrades the diagnosis, never crashes it', async () => {
