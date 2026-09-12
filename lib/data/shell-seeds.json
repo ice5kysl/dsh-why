@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T23:56:02.540Z",
+  "generatedAt": "2026-09-12T00:22:00.694Z",
   "pkg": "@deepseek-ai/dsh-web-frontend",
   "note": "dsh shell（dsh-web-frontend）各版本烘焙的客户端模块表 seed 词；提取器严格模式，形态不符的版本记入 failed 不产出部分表。Seed words baked into each published shell build; extraction is strict — shape deviations land in failed, never partial tables.",
   "distTags": {
