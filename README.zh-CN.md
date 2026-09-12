@@ -38,6 +38,7 @@ Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修�
 - **AI 修复 prompt（`--prompt`）**——末尾附可直接粘给 AI agent 的 prompt：环境 + 结论 + 已知修法 + seed-safe 约束（只允许模块表内 require，否则 try/catch）。
 - **升级提示（R3）**——npm 上有新版；很多时候「先升级」就是全部修法。
 - **生态对照（R4/R5）**——该插件在 [dsh-insights.com](https://dsh-insights.com) 实测矩阵里的判定（`ok` / `never` / `broken-since` / `supported-since`），以及「你不是唯一踩坑的：全生态 N 个插件缺同一个模块」。
+- **社区崩溃语料**——当崩溃级 finding 的签名命中 [crash-corpus](https://dsh-insights.com/data/crash-corpus.json)（`--share` 上报的聚合结果）时，输出会写明这个一模一样的崩溃已被上报多少例、最近一次是什么时候；`--share` 可把你的案例也加进去。
 - **可直接复制的 GitHub issue 模板**——环境信息和诊断结论已预填，发给插件作者即可。
 - 全部健康时输出**绿色摘要**。
 

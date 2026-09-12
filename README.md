@@ -38,6 +38,7 @@ There is also a **web version** at [dsh-why.com](https://dsh-why.com): paste the
 - **AI fix prompt (`--prompt`)** — appends a paste-ready prompt for your coding agent: environment + findings + known fixes + the seed-safe constraint (only module-table requires, or try/catch).
 - **Upgrade hints (R3)** — a newer release exists on npm; upgrading first is often the whole fix.
 - **Ecosystem cross-check (R4/R5)** — the plugin's measured verdict on [dsh-insights.com](https://dsh-insights.com) (`ok` / `never` / `broken-since` / `supported-since`), plus *"you are not alone: N plugins ecosystem-wide miss the same module."*
+- **Community crash corpus** — when a crash-level finding's signature matches the [crash-corpus](https://dsh-insights.com/data/crash-corpus.json) (aggregated opt-in `--share` reports), the output says how often the exact crash was seen and when last; `--share` adds yours.
 - **A copy-ready GitHub issue template** for the plugin author, with your environment and the diagnosis pre-filled.
 - **A green "all clear"** when everything loads fine.
 
