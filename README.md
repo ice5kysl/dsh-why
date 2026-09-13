@@ -1,11 +1,11 @@
 # dsh-why
 
-[![site](https://img.shields.io/badge/site-dsh--why.com-informational)](https://dsh-why.com)
-[![DSH Insights health](https://dsh-insights.com/badge/ice5kysl/dsh-why.svg)](https://dsh-insights.com/p/ice5kysl/dsh-why/)
+[![site](https://img.shields.io/badge/site-dsh--why.com-informational)](https://dsh-why.com?utm_source=github&utm_medium=readme)
+[![DSH Insights health](https://dsh-insights.com/badge/ice5kysl/dsh-why.svg)](https://dsh-insights.com/p/ice5kysl/dsh-why/?utm_source=github&utm_medium=readme)
 [![npm](https://img.shields.io/npm/v/dsh-why.svg)](https://www.npmjs.com/package/dsh-why)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-**Why did my [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh) (DeepSeek Harness) break?** A zero-dependency, read-only CLI that diagnoses plugin load failures: what you have installed, what crashes (or will crash) the loader, why, and how to fix it — cross-checked against the ecosystem-wide observed-compatibility matrix at [dsh-insights.com](https://dsh-insights.com).
+**Why did my [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh) (DeepSeek Harness) break?** A zero-dependency, read-only CLI that diagnoses plugin load failures: what you have installed, what crashes (or will crash) the loader, why, and how to fix it — cross-checked against the ecosystem-wide observed-compatibility matrix at [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme).
 
 ```bash
 npx dsh-why            # diagnose the current environment
@@ -20,7 +20,7 @@ npx dsh-why --prompt   # append a paste-ready fix prompt for your AI agent
 
 Node ≥ 18, no install required (`npx`), **zero npm dependencies**, and it **never modifies any file** on your machine. Output language follows your locale (中文/English), override with `--lang zh|en`.
 
-There is also a **web version** at [dsh-why.com](https://dsh-why.com): paste the red-screen error into a browser and get the same diagnosis with nothing installed — it runs the same rule base client-side and never uploads what you paste.
+There is also a **web version** at [dsh-why.com](https://dsh-why.com?utm_source=github&utm_medium=readme): paste the red-screen error into a browser and get the same diagnosis with nothing installed — it runs the same rule base client-side and never uploads what you paste.
 
 ## What it tells you
 
@@ -37,7 +37,7 @@ There is also a **web version** at [dsh-why.com](https://dsh-why.com): paste the
 - **Pasted-error mode (`--error` / piped stdin)** — parses the loader's actual error text (`failed to import loader entry …`, `require("…") missed the module table`, `bundle script … failed to load`, `cannot resolve "…"`, bare `Failed to load plugins` → full diagnosis) and diagnoses the referenced plugin/module even when it is NOT installed locally. Unknown patterns get an honest "not recognized" plus the supported list.
 - **AI fix prompt (`--prompt`)** — appends a paste-ready prompt for your coding agent: environment + findings + known fixes + the seed-safe constraint (only module-table requires, or try/catch).
 - **Upgrade hints (R3)** — a newer release exists on npm; upgrading first is often the whole fix.
-- **Ecosystem cross-check (R4/R5)** — the plugin's measured verdict on [dsh-insights.com](https://dsh-insights.com) (`ok` / `never` / `broken-since` / `supported-since`), plus *"you are not alone: N plugins ecosystem-wide miss the same module."*
+- **Ecosystem cross-check (R4/R5)** — the plugin's measured verdict on [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme) (`ok` / `never` / `broken-since` / `supported-since`), plus *"you are not alone: N plugins ecosystem-wide miss the same module."*
 - **Community crash corpus** — when a crash-level finding's signature matches the [crash-corpus](https://dsh-insights.com/data/crash-corpus.json) (aggregated opt-in `--share` reports), the output says how often the exact crash was seen and when last; `--share` adds yours. Signatures that so far have only cold-start seed rows (machine-measured, never user reports) are labelled as a known crash pattern instead — the corpus never dresses seeds up as user reports.
 - **A copy-ready GitHub issue template** for the plugin author, with your environment and the diagnosis pre-filled.
 - **A green "all clear"** when everything loads fine.
@@ -181,7 +181,7 @@ for "no failed turns in this window") · `2` = usage error.
 
 ## Related
 
-- [dsh-insights.com](https://dsh-insights.com) — the dsh plugin ecosystem observatory (health grades, scenario picks, the observed-compat matrix this tool cross-checks against). Data source: [`/data/compat-observed.json`](https://dsh-insights.com/data/compat-observed.json).
+- [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme) — the dsh plugin ecosystem observatory (health grades, scenario picks, the observed-compat matrix this tool cross-checks against). Data source: [`/data/compat-observed.json`](https://dsh-insights.com/data/compat-observed.json).
 - [dsh-insights-kit](https://github.com/ice5kysl/dsh-insights-kit) — the in-dsh panel for *proactive* health checks; dsh-why is the *reactive* CLI for when something already broke.
 - [中文文档](./README.zh-CN.md)
 

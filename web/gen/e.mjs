@@ -145,7 +145,7 @@ ${body}
 <footer>
   <div class="inner">
     <p class="fnote">${t('dsh-why — the “why did my dsh break” diagnostic.', 'dsh-why——「我的 dsh 为什么挂了」诊断。')}</p>
-    <nav><a href="/">dsh-why</a><a href="/guide/">${t('guide', '指南')}</a><a href="https://github.com/ice5kysl/dsh-why">GitHub</a><a href="https://dsh-insights.com/">dsh-insights.com</a></nav>
+    <nav><a href="/">dsh-why</a><a href="/guide/">${t('guide', '指南')}</a><a href="https://github.com/ice5kysl/dsh-why">GitHub</a><a href="https://dsh-insights.com/?utm_source=dsh-why&utm_medium=site">dsh-insights.com</a></nav>
   </div>
 </footer>
 ${langToggleScript()}

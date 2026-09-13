@@ -221,3 +221,19 @@ describe('the run reference list survives a stale client script', () => {
     assert.match(app, /'ref-runs'/)
   })
 })
+
+describe('analytics (Umami) guardrails', () => {
+  const analytics = readFileSync(join(ROOT, 'web', 'analytics.mjs'), 'utf8')
+
+  it('pasted errors stay out of the collector (exclude-search/hash retained)', () => {
+    assert.match(analytics, /dataset\.excludeSearch = 'true'/)
+    assert.match(analytics, /dataset\.excludeHash = 'true'/)
+  })
+
+  it('utm attribution survives exclude-search via a whitelisted before-send hook', () => {
+    assert.match(analytics, /dataset\.beforeSend = 'dshWhyBeforeSend'/)
+    assert.match(analytics, /UTM_KEYS = \['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'\]/)
+    // the hook re-attaches ONLY utm_* — never the pasted-error `e` param
+    assert.doesNotMatch(analytics, /keep\.set\('e'/)
+  })
+})

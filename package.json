@@ -40,7 +40,7 @@
     "type": "git",
     "url": "git+https://github.com/ice5kysl/dsh-why.git"
   },
-  "homepage": "https://dsh-why.com",
+  "homepage": "https://dsh-why.com?utm_source=npmjs&utm_medium=package",
   "bugs": {
     "url": "https://github.com/ice5kysl/dsh-why/issues"
   },

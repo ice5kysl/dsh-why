@@ -116,7 +116,7 @@ is what takes a working plugin down.
 If the gate runs in your CI, this is an honest claim to make:
 
 ```markdown
-[![dsh-why: pre-publish gate](https://img.shields.io/badge/dsh--why-pre--publish%20gate-blue)](https://dsh-why.com/e/missed-the-module-table/)
+[![dsh-why: pre-publish gate](https://img.shields.io/badge/dsh--why-pre--publish%20gate-blue)](https://dsh-why.com/e/missed-the-module-table/?utm_source=github&utm_medium=readme)
 ```
 
 Please only add it once the workflow above is actually running — the badge is a
@@ -124,5 +124,5 @@ statement about your repo, not about this tool.
 
 ---
 
-Docs and the full error reference: **https://dsh-why.com**
+Docs and the full error reference: **https://dsh-why.com?utm_source=github&utm_medium=readme**
 Source: https://github.com/ice5kysl/dsh-why · npm: https://www.npmjs.com/package/dsh-why

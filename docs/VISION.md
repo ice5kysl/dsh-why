@@ -1,7 +1,7 @@
 # dsh-why · 产品愿景（Vision）
 
 > 状态：**v1.1 · 2026-09-10** · 站点与品牌：**dsh-why.com** · 仓库：[dsh-why](https://github.com/ice5kysl/dsh-why)
-> 文档地图：VISION（为什么）→ [README](../README.zh-CN.md)（用法 / CLI 参考 / 工作原理）· 姊妹项目：[dsh-insights](https://dsh-insights.com)（选型）· dsh-insights-kit（体检）
+> 文档地图：VISION（为什么）→ [README](../README.zh-CN.md)（用法 / CLI 参考 / 工作原理）· 姊妹项目：[dsh-insights](https://dsh-insights.com?utm_source=github&utm_medium=readme)（选型）· dsh-insights-kit（体检）
 
 ## 一句话愿景
 
@@ -13,7 +13,7 @@ DSH 的哲学是 "Everything is a Plugin"；dsh-why 的回答是：**Every crash
 
 - **incumbent 证明需求真实**：同类会话复盘工具基线周下载 230-350，被推荐周冲到 **1,189**——分发事件能放大 4-5 倍。零营销、纯需求驱动。
 - **两层不重叠，各守主场**：它是**会话运行复盘**（agent 跑挂了：工具失败/重试空转），我们是**加载崩溃 + 环境兼容**（装不上/起不来/升不升）。
-- **护城河**：接 [dsh-insights](https://dsh-insights.com) 的实测兼容矩阵（compat-observed）——诊断输出不只是「这个 require 缺了」，而是「这个错在全生态出现过 N 次、是某插件 × 某 shell 版本的已知不兼容、已知修法是 X」。**别人抄不走生态数据。**
+- **护城河**：接 [dsh-insights](https://dsh-insights.com?utm_source=github&utm_medium=readme) 的实测兼容矩阵（compat-observed）——诊断输出不只是「这个 require 缺了」，而是「这个错在全生态出现过 N 次、是某插件 × 某 shell 版本的已知不兼容、已知修法是 X」。**别人抄不走生态数据。**
 - 官方 `.agents/notes/` 在诊断/复盘领域零命中，吸收风险极低。
 
 ## 形态决策：CLI 是产品，插件壳是渠道
@@ -28,7 +28,7 @@ DSH 的哲学是 "Everything is a Plugin"；dsh-why 的回答是：**Every crash
 
 | 资产 | 时机 | 回答的问题 |
 |---|---|---|
-| [dsh-insights.com](https://dsh-insights.com) | 选型时（事前） | 这个插件信得过吗（健康分 / 实测兼容矩阵） |
+| [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme) | 选型时（事前） | 这个插件信得过吗（健康分 / 实测兼容矩阵） |
 | dsh-insights-kit | 安装后（事前体检） | 我当前的插件组合健康吗 |
 | **dsh-why** | **崩溃后（事后）** | **为什么挂了、怎么修** |
 

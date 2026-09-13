@@ -85,7 +85,7 @@ describe('dsh-why CLI', () => {
     assert.match(report.issueTemplate, /fake-crash-plugin@1\.0\.0/)
     assert.match(report.issueTemplate, /missed the module table/)
     // the issue we file for the user carries the tool's own short link
-    assert.match(report.issueTemplate, /https:\/\/dsh-why\.com/)
+    assert.match(report.issueTemplate, /https:\/\/dsh-why\.com\?utm_source=dsh-why&utm_medium=issue/)
     assert.doesNotMatch(report.issueTemplate, /github\.com\/ice5kysl\/dsh-why/)
   })
 
@@ -97,9 +97,9 @@ describe('dsh-why CLI', () => {
 
   it('the tip line points at the docs link', () => {
     const { stdout } = runCli(['--offline', '--profile', 'clean'])
-    assert.match(stdout, /Docs: https:\/\/dsh-why\.com/)
+    assert.match(stdout, /Docs: https:\/\/dsh-why\.com\?utm_source=dsh-why&utm_medium=cli/)
     const zh = runCli(['--offline', '--profile', 'clean', '--lang', 'zh'])
-    assert.match(zh.stdout, /文档：https:\/\/dsh-why\.com/)
+    assert.match(zh.stdout, /文档：https:\/\/dsh-why\.com\?utm_source=dsh-why&utm_medium=cli/)
   })
 
   it('--lang zh renders Chinese', () => {
@@ -214,6 +214,8 @@ describe('dsh-why CLI', () => {
     assert.match(report.fixPrompt, /Fix a dsh \(DeepSeek Harness\) plugin load failure/)
     assert.match(report.fixPrompt, /@deepseek-ai\/dsh-client-runtime\/client/)
     assert.equal(report.fixPrompt.includes('react'), true) // seed words listed in the constraint
+    // the prompt's tool link is attributed as a pasted prompt, not a doc click
+    assert.match(report.fixPrompt, /https:\/\/dsh-why\.com\?utm_source=dsh-why&utm_medium=prompt/)
   })
 
   it('--prompt on a healthy profile says nothing to fix', () => {

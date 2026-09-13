@@ -1,11 +1,11 @@
 # dsh-why
 
-[![site](https://img.shields.io/badge/site-dsh--why.com-informational)](https://dsh-why.com)
-[![DSH Insights health](https://dsh-insights.com/badge/ice5kysl/dsh-why.svg)](https://dsh-insights.com/p/ice5kysl/dsh-why/)
+[![site](https://img.shields.io/badge/site-dsh--why.com-informational)](https://dsh-why.com?utm_source=github&utm_medium=readme)
+[![DSH Insights health](https://dsh-insights.com/badge/ice5kysl/dsh-why.svg)](https://dsh-insights.com/p/ice5kysl/dsh-why/?utm_source=github&utm_medium=readme)
 [![npm](https://img.shields.io/npm/v/dsh-why.svg)](https://www.npmjs.com/package/dsh-why)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-**我的 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）为什么挂了？** 零依赖、只读的 CLI 诊断工具：装了什么、什么崩了（或将崩）、为什么、怎么办——并对照 [dsh-insights.com](https://dsh-insights.com) 的全生态实测兼容矩阵。
+**我的 [dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）为什么挂了？** 零依赖、只读的 CLI 诊断工具：装了什么、什么崩了（或将崩）、为什么、怎么办——并对照 [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme) 的全生态实测兼容矩阵。
 
 ```bash
 npx dsh-why            # 诊断当前环境
@@ -20,7 +20,7 @@ npx dsh-why --prompt   # 末尾附可粘给 AI agent 的修复 prompt
 
 Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修改你的任何文件**。输出语言按 locale 自动判断（中文/English），可用 `--lang zh|en` 覆盖。
 
-另有**网页版** [dsh-why.com](https://dsh-why.com)：在浏览器里粘贴红屏报错，无需安装即可得到同一套诊断——同一规则库在浏览器端运行，你粘贴的内容绝不上传。
+另有**网页版** [dsh-why.com](https://dsh-why.com?utm_source=github&utm_medium=readme)：在浏览器里粘贴红屏报错，无需安装即可得到同一套诊断——同一规则库在浏览器端运行，你粘贴的内容绝不上传。
 
 ## 它能告诉你什么
 
@@ -37,7 +37,7 @@ Node ≥ 18，免安装（`npx` 即用），**零 npm 依赖**，**永远不修�
 - **报错粘贴模式（`--error` / 管道 stdin）**——直接解析加载器真实报错文本（`failed to import loader entry …`、`require("…") missed the module table`、`bundle script … failed to load`、`cannot resolve "…"`、裸 `Failed to load plugins` 退化为全量诊断），**即使本机没装该插件**也照常诊断。不认识的报错会诚实说明并列出已支持模式。
 - **AI 修复 prompt（`--prompt`）**——末尾附可直接粘给 AI agent 的 prompt：环境 + 结论 + 已知修法 + seed-safe 约束（只允许模块表内 require，否则 try/catch）。
 - **升级提示（R3）**——npm 上有新版；很多时候「先升级」就是全部修法。
-- **生态对照（R4/R5）**——该插件在 [dsh-insights.com](https://dsh-insights.com) 实测矩阵里的判定（`ok` / `never` / `broken-since` / `supported-since`），以及「你不是唯一踩坑的：全生态 N 个插件缺同一个模块」。
+- **生态对照（R4/R5）**——该插件在 [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme) 实测矩阵里的判定（`ok` / `never` / `broken-since` / `supported-since`），以及「你不是唯一踩坑的：全生态 N 个插件缺同一个模块」。
 - **社区崩溃语料**——当崩溃级 finding 的签名命中 [crash-corpus](https://dsh-insights.com/data/crash-corpus.json)（`--share` 上报的聚合结果）时，输出会写明这个一模一样的崩溃已被上报多少例、最近一次是什么时候；`--share` 可把你的案例也加进去。
 - **可直接复制的 GitHub issue 模板**——环境信息和诊断结论已预填，发给插件作者即可。
 - 全部健康时输出**绿色摘要**。
@@ -132,7 +132,7 @@ dsh-why [--json] [--offline] [--profile <name>] [--dsh-home <path>]
 
 ## 相关
 
-- [dsh-insights.com](https://dsh-insights.com)——dsh 插件生态观测站（健康分、场景推荐、本工具对照的实测兼容矩阵）。数据源：[`/data/compat-observed.json`](https://dsh-insights.com/data/compat-observed.json)。
+- [dsh-insights.com](https://dsh-insights.com?utm_source=github&utm_medium=readme)——dsh 插件生态观测站（健康分、场景推荐、本工具对照的实测兼容矩阵）。数据源：[`/data/compat-observed.json`](https://dsh-insights.com/data/compat-observed.json)。
 - [dsh-insights-kit](https://github.com/ice5kysl/dsh-insights-kit)——dsh 内的**事前**体检面板；dsh-why 是**事后**排障 CLI。
 - [English README](./README.md)
 
