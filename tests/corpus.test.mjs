@@ -100,11 +100,14 @@ describe('runDiagnosis × crash corpus', () => {
 
     const en = renderText(report, 'en', '9.9.9', { color: false })
     assert.match(en, /Community corpus: 5 report\(s\) of this exact crash \(latest 2026-09-11\) · --share adds yours/)
+    assert.doesNotMatch(en, /Not in the community corpus yet/) // a hit is not a miss
+    assert.equal(r1.corpusMiss, undefined)
     const zh = renderText(report, 'zh', '9.9.9', { color: false })
     assert.match(zh, /社区语料：已见 5 例上报（最近 2026-09-11）· --share 可上报你的案例/)
+    assert.doesNotMatch(zh, /社区语料还没有这个崩溃的记录/)
   })
 
-  it('a sig miss renders no community line', async () => {
+  it('a sig miss renders the --share nudge (en + zh) and corpusMiss in --json', async () => {
     const otherOnly = { ...CORPUS, signatures: [{ sig: 'r6_0000000000000000', category: 'profile-boot', count: 3, plugins: ['x'], shells: ['0.1.2-rc.1'], firstSeen: '2026-09-01T00:00:00Z', lastSeen: '2026-09-10T00:00:00Z' }] }
     globalThis.fetch = async (url) => {
       if (String(url).includes('crash-corpus')) return { ok: true, json: async () => otherOnly }
@@ -113,8 +116,16 @@ describe('runDiagnosis × crash corpus', () => {
     const report = await runDiagnosis({ env: ENV, offline: false })
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
     assert.equal(r1.corpusHit, undefined)
-    assert.doesNotMatch(renderText(report, 'en', '9.9.9', { color: false }), /Community corpus/)
-    assert.doesNotMatch(renderText(report, 'zh', '9.9.9', { color: false }), /社区语料/)
+    assert.equal(r1.corpusMiss, true)
+    // --json consumers see the same flag
+    assert.equal(JSON.parse(JSON.stringify(report)).findings.find((f) => f.rule === 'R1').corpusMiss, true)
+
+    const en = renderText(report, 'en', '9.9.9', { color: false })
+    assert.match(en, /Not in the community corpus yet · --share it and help the next person who hits this/)
+    assert.doesNotMatch(en, /report\(s\) of this exact crash/)
+    const zh = renderText(report, 'zh', '9.9.9', { color: false })
+    assert.match(zh, /社区语料还没有这个崩溃的记录 · --share 上报它，帮下一个遇到的人/)
+    assert.doesNotMatch(zh, /已见 \d+ 例上报/)
   })
 
   it('a seed-only signature is a known pattern, never phrased as user reports', async () => {
@@ -147,9 +158,38 @@ describe('runDiagnosis × crash corpus', () => {
     const en = renderText(report, 'en', '9.9.9', { color: false })
     assert.match(en, /Known crash pattern: measured in the upstream corpus, no user reports yet/)
     assert.doesNotMatch(en, /report\(s\) of this exact crash/)
+    assert.doesNotMatch(en, /Not in the community corpus yet/) // a seeded hit is not a miss
     const zh = renderText(report, 'zh', '9.9.9', { color: false })
     assert.match(zh, /已知崩溃模式：上游实测语料命中，暂无用户上报/)
     assert.doesNotMatch(zh, /已见 \d+ 例上报/)
+  })
+
+  it('multiple error findings: hit and miss are judged independently', async () => {
+    // One pasted error, two missing modules on the same plugin ref — two R1
+    // error findings; the corpus knows only one of them.
+    const knownSig = findingSig({ rule: 'R1', plugin: 'dsh-multi', missing: ['@deepseek-ai/dsh-client-runtime/client'] })
+    const corpus = { ...CORPUS, signatures: [{ ...CORPUS.signatures[0], sig: knownSig }] }
+    globalThis.fetch = async (url) => {
+      if (String(url).includes('crash-corpus')) return { ok: true, json: async () => corpus }
+      return { ok: false, status: 404, json: async () => null }
+    }
+    const report = await runDiagnosis({
+      env: ENV,
+      offline: false,
+      errorText: 'HARNESS Failed to load plugins: failed to import loader entry a1b2c3 (dsh-multi): client-modules: require("@deepseek-ai/dsh-client-runtime/client") missed the module table\nclient-modules: require("never-seeded-xyz") missed the module table',
+    })
+    const errors = report.findings.filter((f) => f.rule === 'R1' && f.severity === 'error')
+    assert.equal(errors.length, 2)
+    const known = errors.find((f) => f.missing.includes('@deepseek-ai/dsh-client-runtime/client'))
+    const novel = errors.find((f) => f.missing.includes('never-seeded-xyz'))
+    assert.equal(known.corpusHit.sig, knownSig)
+    assert.equal(known.corpusMiss, undefined)
+    assert.equal(novel.corpusHit, undefined)
+    assert.equal(novel.corpusMiss, true)
+
+    const text = renderText(report, 'en', '9.9.9', { color: false })
+    assert.equal((text.match(/of this exact crash/g) ?? []).length, 1) // only the hit
+    assert.equal((text.match(/Not in the community corpus yet/g) ?? []).length, 1) // only the miss
   })
 
   it('an unreachable corpus degrades the diagnosis, never crashes it', async () => {
@@ -158,7 +198,10 @@ describe('runDiagnosis × crash corpus', () => {
     assert.equal(report.summary.errors, 1) // R1 still fires on the bundled table
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
     assert.equal(r1.corpusHit, undefined)
-    assert.doesNotMatch(renderText(report, 'en', '9.9.9', { color: false }), /Community corpus/)
+    assert.equal(r1.corpusMiss, undefined) // corpus unknown ≠ miss — no nudge, never misleading
+    const text = renderText(report, 'en', '9.9.9', { color: false })
+    assert.doesNotMatch(text, /Community corpus/)
+    assert.doesNotMatch(text, /Not in the community corpus yet/)
   })
 
   it('offline mode skips the corpus entirely', async () => {
@@ -168,5 +211,7 @@ describe('runDiagnosis × crash corpus', () => {
     assert.equal(calls, 0)
     const r1 = report.findings.find((f) => f.rule === 'R1' && f.severity === 'error')
     assert.equal(r1.corpusHit, undefined)
+    assert.equal(r1.corpusMiss, undefined)
+    assert.doesNotMatch(renderText(report, 'zh', '9.9.9', { color: false }), /社区语料还没有/)
   })
 })
